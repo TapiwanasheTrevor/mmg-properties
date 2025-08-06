@@ -1,0 +1,200 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function getUserRole() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role;
+    }
+    
+    function isUserActive() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.isActive == true;
+    }
+    
+    function isAdmin() {
+      return getUserRole() == 'admin';
+    }
+    
+    function isOwner() {
+      return getUserRole() == 'owner';
+    }
+    
+    function isAgent() {
+      return getUserRole() == 'agent';
+    }
+    
+    function isTenant() {
+      return getUserRole() == 'tenant';
+    }
+    
+    function isValidImageType() {
+      return resource.contentType.matches('image/.*');
+    }
+    
+    function isValidDocumentType() {
+      return resource.contentType.matches('application/pdf') ||
+             resource.contentType.matches('application/msword') ||
+             resource.contentType.matches('application/vnd.openxmlformats-officedocument.wordprocessingml.document') ||
+             resource.contentType.matches('text/plain');
+    }
+    
+    function isValidFileSize() {
+      return resource.size <= 10 * 1024 * 1024; // 10MB limit
+    }
+    
+    // User profile images
+    match /users/{userId}/profile/{fileName} {
+      allow read: if isAuthenticated() && isUserActive();
+      
+      allow write: if isAuthenticated() && isUserActive() && 
+        request.auth.uid == userId && 
+        isValidImageType() && 
+        isValidFileSize();
+      
+      allow delete: if isAuthenticated() && isUserActive() && 
+        (request.auth.uid == userId || isAdmin());
+    }
+    
+    // Property images
+    match /properties/{propertyId}/images/{fileName} {
+      allow read: if isAuthenticated() && isUserActive();
+      
+      allow write: if isAuthenticated() && isUserActive() && 
+        (isAdmin() || 
+         firestore.get(/databases/(default)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid ||
+         firestore.get(/databases/(default)/documents/properties/$(propertyId)).data.agentId == request.auth.uid) &&
+        isValidImageType() && 
+        isValidFileSize();
+      
+      allow delete: if isAuthenticated() && isUserActive() && 
+        (isAdmin() || 
+         firestore.get(/databases/(default)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid);
+    }
+    
+    // Property documents
+    match /properties/{propertyId}/documents/{fileName} {
+      allow read: if isAuthenticated() && isUserActive() && 
+        (isAdmin() || 
+         firestore.get(/databases/(default)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid ||
+         firestore.get(/databases/(default)/documents/properties/$(propertyId)).data.agentId == request.auth.uid);
+      
+      allow write: if isAuthenticated() && isUserActive() && 
+        (isAdmin() || 
+         firestore.get(/databases/(default)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid ||
+         firestore.get(/databases/(default)/documents/properties/$(propertyId)).data.agentId == request.auth.uid) &&
+        (isValidDocumentType() || isValidImageType()) && 
+        isValidFileSize();
+      
+      allow delete: if isAuthenticated() && isUserActive() && 
+        (isAdmin() || 
+         firestore.get(/databases/(default)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid);
+    }
+    
+    // Unit images
+    match /units/{unitId}/images/{fileName} {
+      allow read: if isAuthenticated() && isUserActive();
+      
+      allow write: if isAuthenticated() && isUserActive() && 
+        (isAdmin() || 
+         firestore.get(/databases/(default)/documents/properties/$(firestore.get(/databases/(default)/documents/units/$(unitId)).data.propertyId)).data.ownerId == request.auth.uid ||
+         firestore.get(/databases/(default)/documents/properties/$(firestore.get(/databases/(default)/documents/units/$(unitId)).data.propertyId)).data.agentId == request.auth.uid) &&
+        isValidImageType() && 
+        isValidFileSize();
+      
+      allow delete: if isAuthenticated() && isUserActive() && 
+        (isAdmin() || 
+         firestore.get(/databases/(default)/documents/properties/$(firestore.get(/databases/(default)/documents/units/$(unitId)).data.propertyId)).data.ownerId == request.auth.uid);
+    }
+    
+    // Lease documents
+    match /leases/{leaseId}/documents/{fileName} {
+      allow read: if isAuthenticated() && isUserActive() && 
+        (isAdmin() || 
+         firestore.get(/databases/(default)/documents/leases/$(leaseId)).data.ownerId == request.auth.uid ||
+         firestore.get(/databases/(default)/documents/leases/$(leaseId)).data.agentId == request.auth.uid ||
+         firestore.get(/databases/(default)/documents/leases/$(leaseId)).data.tenantId == request.auth.uid);
+      
+      allow write: if isAuthenticated() && isUserActive() && 
+        (isAdmin() || 
+         firestore.get(/databases/(default)/documents/leases/$(leaseId)).data.ownerId == request.auth.uid ||
+         firestore.get(/databases/(default)/documents/leases/$(leaseId)).data.agentId == request.auth.uid) &&
+        (isValidDocumentType() || isValidImageType()) && 
+        isValidFileSize();
+      
+      allow delete: if isAuthenticated() && isUserActive() && 
+        (isAdmin() || 
+         firestore.get(/databases/(default)/documents/leases/$(leaseId)).data.ownerId == request.auth.uid);
+    }
+    
+    // Maintenance request media
+    match /maintenance/{requestId}/{mediaType}/{fileName} {
+      allow read: if isAuthenticated() && isUserActive() && 
+        (isAdmin() || 
+         firestore.get(/databases/(default)/documents/maintenance_requests/$(requestId)).data.ownerId == request.auth.uid ||
+         firestore.get(/databases/(default)/documents/maintenance_requests/$(requestId)).data.agentId == request.auth.uid ||
+         firestore.get(/databases/(default)/documents/maintenance_requests/$(requestId)).data.tenantId == request.auth.uid);
+      
+      allow write: if isAuthenticated() && isUserActive() && 
+        (isAdmin() || 
+         firestore.get(/databases/(default)/documents/maintenance_requests/$(requestId)).data.ownerId == request.auth.uid ||
+         firestore.get(/databases/(default)/documents/maintenance_requests/$(requestId)).data.agentId == request.auth.uid ||
+         firestore.get(/databases/(default)/documents/maintenance_requests/$(requestId)).data.tenantId == request.auth.uid) &&
+        (isValidImageType() || resource.contentType.matches('video/.*')) && 
+        resource.size <= 50 * 1024 * 1024; // 50MB limit for maintenance media
+      
+      allow delete: if isAuthenticated() && isUserActive() && 
+        (isAdmin() || 
+         firestore.get(/databases/(default)/documents/maintenance_requests/$(requestId)).data.ownerId == request.auth.uid ||
+         firestore.get(/databases/(default)/documents/maintenance_requests/$(requestId)).data.agentId == request.auth.uid);
+    }
+    
+    // Inspection media
+    match /inspections/{inspectionId}/{mediaType}/{fileName} {
+      allow read: if isAuthenticated() && isUserActive() && 
+        (isAdmin() || 
+         firestore.get(/databases/(default)/documents/properties/$(firestore.get(/databases/(default)/documents/inspections/$(inspectionId)).data.propertyId)).data.ownerId == request.auth.uid ||
+         firestore.get(/databases/(default)/documents/properties/$(firestore.get(/databases/(default)/documents/inspections/$(inspectionId)).data.propertyId)).data.agentId == request.auth.uid);
+      
+      allow write: if isAuthenticated() && isUserActive() && 
+        (isAdmin() || 
+         firestore.get(/databases/(default)/documents/properties/$(firestore.get(/databases/(default)/documents/inspections/$(inspectionId)).data.propertyId)).data.ownerId == request.auth.uid ||
+         firestore.get(/databases/(default)/documents/properties/$(firestore.get(/databases/(default)/documents/inspections/$(inspectionId)).data.propertyId)).data.agentId == request.auth.uid ||
+         firestore.get(/databases/(default)/documents/inspections/$(inspectionId)).data.performedBy == request.auth.uid) &&
+        (isValidImageType() || resource.contentType.matches('video/.*')) && 
+        resource.size <= 50 * 1024 * 1024; // 50MB limit for inspection media
+      
+      allow delete: if isAuthenticated() && isUserActive() && 
+        (isAdmin() || 
+         firestore.get(/databases/(default)/documents/properties/$(firestore.get(/databases/(default)/documents/inspections/$(inspectionId)).data.propertyId)).data.ownerId == request.auth.uid);
+    }
+    
+    // Payment receipts
+    match /transactions/{transactionId}/receipts/{fileName} {
+      allow read: if isAuthenticated() && isUserActive() && 
+        (isAdmin() || 
+         firestore.get(/databases/(default)/documents/properties/$(firestore.get(/databases/(default)/documents/transactions/$(transactionId)).data.propertyId)).data.ownerId == request.auth.uid ||
+         firestore.get(/databases/(default)/documents/properties/$(firestore.get(/databases/(default)/documents/transactions/$(transactionId)).data.propertyId)).data.agentId == request.auth.uid ||
+         firestore.get(/databases/(default)/documents/transactions/$(transactionId)).data.tenantId == request.auth.uid);
+      
+      allow write: if isAuthenticated() && isUserActive() && 
+        (isAdmin() || 
+         firestore.get(/databases/(default)/documents/properties/$(firestore.get(/databases/(default)/documents/transactions/$(transactionId)).data.propertyId)).data.ownerId == request.auth.uid ||
+         firestore.get(/databases/(default)/documents/properties/$(firestore.get(/databases/(default)/documents/transactions/$(transactionId)).data.propertyId)).data.agentId == request.auth.uid ||
+         firestore.get(/databases/(default)/documents/transactions/$(transactionId)).data.tenantId == request.auth.uid) &&
+        (isValidDocumentType() || isValidImageType()) && 
+        isValidFileSize();
+      
+      allow delete: if isAuthenticated() && isUserActive() && 
+        (isAdmin() || 
+         firestore.get(/databases/(default)/documents/properties/$(firestore.get(/databases/(default)/documents/transactions/$(transactionId)).data.propertyId)).data.ownerId == request.auth.uid);
+    }
+    
+    // Default deny all other access
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

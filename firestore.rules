@@ -1,0 +1,306 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+    
+    function isUserActive() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isActive == true;
+    }
+    
+    function isAdmin() {
+      return getUserRole() == 'admin';
+    }
+    
+    function isOwner() {
+      return getUserRole() == 'owner';
+    }
+    
+    function isAgent() {
+      return getUserRole() == 'agent';
+    }
+    
+    function isTenant() {
+      return getUserRole() == 'tenant';
+    }
+    
+    function isOwnerOrAdmin() {
+      return isOwner() || isAdmin();
+    }
+    
+    function isAgentOrOwnerOrAdmin() {
+      return isAgent() || isOwner() || isAdmin();
+    }
+    
+    function isOwnerOfProperty(propertyId) {
+      return get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid;
+    }
+    
+    function isAgentOfProperty(propertyId) {
+      return get(/databases/$(database)/documents/properties/$(propertyId)).data.agentId == request.auth.uid;
+    }
+    
+    function isTenantOfUnit(unitId) {
+      return get(/databases/$(database)/documents/units/$(unitId)).data.currentTenantId == request.auth.uid;
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      allow read: if isAuthenticated() && isUserActive() && (
+        request.auth.uid == userId || 
+        isAgentOrOwnerOrAdmin()
+      );
+      
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      
+      allow update: if isAuthenticated() && isUserActive() && (
+        request.auth.uid == userId || 
+        isAdmin()
+      );
+      
+      allow delete: if isAdmin();
+    }
+    
+    // Properties collection
+    match /properties/{propertyId} {
+      allow read: if isAuthenticated() && isUserActive() && (
+        isAdmin() ||
+        isOwnerOfProperty(propertyId) ||
+        isAgentOfProperty(propertyId) ||
+        (isTenant() && exists(/databases/$(database)/documents/units/$(propertyId + '_unit')) && 
+         isTenantOfUnit(propertyId + '_unit'))
+      );
+      
+      allow create: if isAuthenticated() && isUserActive() && isOwnerOrAdmin();
+      
+      allow update: if isAuthenticated() && isUserActive() && (
+        isAdmin() ||
+        isOwnerOfProperty(propertyId) ||
+        isAgentOfProperty(propertyId)
+      );
+      
+      allow delete: if isAuthenticated() && isUserActive() && (
+        isAdmin() || 
+        isOwnerOfProperty(propertyId)
+      );
+    }
+    
+    // Units collection
+    match /units/{unitId} {
+      allow read: if isAuthenticated() && isUserActive() && (
+        isAdmin() ||
+        isOwnerOfProperty(resource.data.propertyId) ||
+        isAgentOfProperty(resource.data.propertyId) ||
+        (isTenant() && resource.data.currentTenantId == request.auth.uid)
+      );
+      
+      allow create: if isAuthenticated() && isUserActive() && (
+        isAdmin() ||
+        isOwnerOfProperty(resource.data.propertyId) ||
+        isAgentOfProperty(resource.data.propertyId)
+      );
+      
+      allow update: if isAuthenticated() && isUserActive() && (
+        isAdmin() ||
+        isOwnerOfProperty(resource.data.propertyId) ||
+        isAgentOfProperty(resource.data.propertyId)
+      );
+      
+      allow delete: if isAuthenticated() && isUserActive() && (
+        isAdmin() || 
+        isOwnerOfProperty(resource.data.propertyId)
+      );
+    }
+    
+    // Leases collection
+    match /leases/{leaseId} {
+      allow read: if isAuthenticated() && isUserActive() && (
+        isAdmin() ||
+        resource.data.ownerId == request.auth.uid ||
+        resource.data.agentId == request.auth.uid ||
+        resource.data.tenantId == request.auth.uid
+      );
+      
+      allow create: if isAuthenticated() && isUserActive() && (
+        isAdmin() ||
+        resource.data.ownerId == request.auth.uid ||
+        resource.data.agentId == request.auth.uid
+      );
+      
+      allow update: if isAuthenticated() && isUserActive() && (
+        isAdmin() ||
+        resource.data.ownerId == request.auth.uid ||
+        resource.data.agentId == request.auth.uid
+      );
+      
+      allow delete: if isAuthenticated() && isUserActive() && (
+        isAdmin() || 
+        resource.data.ownerId == request.auth.uid
+      );
+    }
+    
+    // Maintenance requests collection
+    match /maintenance_requests/{requestId} {
+      allow read: if isAuthenticated() && isUserActive() && (
+        isAdmin() ||
+        resource.data.ownerId == request.auth.uid ||
+        resource.data.agentId == request.auth.uid ||
+        resource.data.tenantId == request.auth.uid
+      );
+      
+      allow create: if isAuthenticated() && isUserActive() && (
+        isTenant() && resource.data.tenantId == request.auth.uid ||
+        isAgentOrOwnerOrAdmin()
+      );
+      
+      allow update: if isAuthenticated() && isUserActive() && (
+        isAdmin() ||
+        resource.data.ownerId == request.auth.uid ||
+        resource.data.agentId == request.auth.uid ||
+        (resource.data.tenantId == request.auth.uid && resource.data.status == 'submitted')
+      );
+      
+      allow delete: if isAuthenticated() && isUserActive() && (
+        isAdmin() || 
+        resource.data.ownerId == request.auth.uid ||
+        (resource.data.tenantId == request.auth.uid && resource.data.status == 'submitted')
+      );
+    }
+    
+    // Transactions collection
+    match /transactions/{transactionId} {
+      allow read: if isAuthenticated() && isUserActive() && (
+        isAdmin() ||
+        isOwnerOfProperty(resource.data.propertyId) ||
+        isAgentOfProperty(resource.data.propertyId) ||
+        resource.data.tenantId == request.auth.uid
+      );
+      
+      allow create: if isAuthenticated() && isUserActive() && isAgentOrOwnerOrAdmin();
+      
+      allow update: if isAuthenticated() && isUserActive() && (
+        isAdmin() ||
+        isOwnerOfProperty(resource.data.propertyId) ||
+        isAgentOfProperty(resource.data.propertyId)
+      );
+      
+      allow delete: if isAuthenticated() && isUserActive() && isAdmin();
+    }
+    
+    // Notifications collection
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && isUserActive() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin()
+      );
+      
+      allow create: if isAuthenticated() && isUserActive() && isAgentOrOwnerOrAdmin();
+      
+      allow update: if isAuthenticated() && isUserActive() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin()
+      );
+      
+      allow delete: if isAuthenticated() && isUserActive() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin()
+      );
+    }
+    
+    // Tenants collection
+    match /tenants/{tenantId} {
+      allow read: if isAuthenticated() && isUserActive() && (
+        isAdmin() ||
+        resource.data.userId == request.auth.uid ||
+        isAgentOrOwnerOrAdmin()
+      );
+      
+      allow create: if isAuthenticated() && isUserActive() && (
+        resource.data.userId == request.auth.uid ||
+        isAgentOrOwnerOrAdmin()
+      );
+      
+      allow update: if isAuthenticated() && isUserActive() && (
+        resource.data.userId == request.auth.uid ||
+        isAgentOrOwnerOrAdmin()
+      );
+      
+      allow delete: if isAuthenticated() && isUserActive() && isAdmin();
+    }
+    
+    // Agents collection
+    match /agents/{agentId} {
+      allow read: if isAuthenticated() && isUserActive() && (
+        isAdmin() ||
+        resource.data.userId == request.auth.uid ||
+        isOwnerOrAdmin()
+      );
+      
+      allow create: if isAuthenticated() && isUserActive() && (
+        resource.data.userId == request.auth.uid ||
+        isOwnerOrAdmin()
+      );
+      
+      allow update: if isAuthenticated() && isUserActive() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin()
+      );
+      
+      allow delete: if isAuthenticated() && isUserActive() && isAdmin();
+    }
+    
+    // Owners collection
+    match /owners/{ownerId} {
+      allow read: if isAuthenticated() && isUserActive() && (
+        isAdmin() ||
+        resource.data.userId == request.auth.uid
+      );
+      
+      allow create: if isAuthenticated() && isUserActive() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin()
+      );
+      
+      allow update: if isAuthenticated() && isUserActive() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin()
+      );
+      
+      allow delete: if isAuthenticated() && isUserActive() && isAdmin();
+    }
+    
+    // Inspections collection
+    match /inspections/{inspectionId} {
+      allow read: if isAuthenticated() && isUserActive() && (
+        isAdmin() ||
+        isOwnerOfProperty(resource.data.propertyId) ||
+        isAgentOfProperty(resource.data.propertyId) ||
+        (resource.data.unitId && isTenantOfUnit(resource.data.unitId))
+      );
+      
+      allow create: if isAuthenticated() && isUserActive() && isAgentOrOwnerOrAdmin();
+      
+      allow update: if isAuthenticated() && isUserActive() && (
+        isAdmin() ||
+        isOwnerOfProperty(resource.data.propertyId) ||
+        isAgentOfProperty(resource.data.propertyId)
+      );
+      
+      allow delete: if isAuthenticated() && isUserActive() && (
+        isAdmin() || 
+        isOwnerOfProperty(resource.data.propertyId)
+      );
+    }
+    
+    // Default deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
