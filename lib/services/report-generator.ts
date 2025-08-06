@@ -396,13 +396,13 @@ const processReportData = (rawData: any, reportType: string, options: any) => {
       break;
       
     case 'comprehensive':
-      summary = rawData.summary;
-      details = {
+      Object.assign(summary, rawData.summary);
+      Object.assign(details, {
         portfolio: rawData.portfolio,
         financial: rawData.financial,
         tenant: rawData.tenant,
         maintenance: rawData.maintenance,
-      };
+      });
       break;
   }
   

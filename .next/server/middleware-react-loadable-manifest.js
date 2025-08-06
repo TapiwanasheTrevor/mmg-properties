@@ -1,1 +1,1 @@
-self.__REACT_LOADABLE_MANIFEST="{}"
+self.__REACT_LOADABLE_MANIFEST='{"lib/services/inspections.ts -> ./documents":{"id":10409,"files":["static/chunks/409.3767e6c57771297b.js"]},"lib/services/notifications.ts -> ./maintenance":{"id":66749,"files":["static/chunks/6749.51314fef18b565c9.js"]},"lib/services/transactions.ts -> ./leases":{"id":63921,"files":["static/chunks/3921-77aa6de65e52c45f.js"]}}';

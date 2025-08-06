@@ -1,4 +1,21 @@
 {
+  "/_not-found/page": "app/_not-found/page.js",
+  "/communications/page": "app/communications/page.js",
+  "/admin/seed/page": "app/admin/seed/page.js",
+  "/account-disabled/page": "app/account-disabled/page.js",
+  "/dashboard/page": "app/dashboard/page.js",
+  "/documents/page": "app/documents/page.js",
+  "/leases/page": "app/leases/page.js",
+  "/inspections/page": "app/inspections/page.js",
+  "/maintenance/page": "app/maintenance/page.js",
+  "/login/page": "app/login/page.js",
+  "/properties/page": "app/properties/page.js",
+  "/messages/page": "app/messages/page.js",
+  "/analytics/page": "app/analytics/page.js",
+  "/financial/page": "app/financial/page.js",
+  "/profile/page": "app/profile/page.js",
   "/register/page": "app/register/page.js",
-  "/login/page": "app/login/page.js"
+  "/tenants/page": "app/tenants/page.js",
+  "/unauthorized/page": "app/unauthorized/page.js",
+  "/page": "app/page.js"
 }

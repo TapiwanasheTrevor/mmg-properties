@@ -26,7 +26,6 @@ import {
   Image,
   FileImage,
   File,
-  FilePdf,
   FileSpreadsheet,
   FileVideo,
   AlertCircle,
@@ -284,7 +283,7 @@ export default function DocumentManager({ relatedResource, category }: DocumentM
 
   const getFileIcon = (mimeType: string) => {
     if (mimeType.startsWith('image/')) return <Image className="w-5 h-5" />;
-    if (mimeType === 'application/pdf') return <FilePdf className="w-5 h-5" />;
+    if (mimeType === 'application/pdf') return <FileText className="w-5 h-5" />;
     if (mimeType.includes('spreadsheet') || mimeType.includes('excel')) return <FileSpreadsheet className="w-5 h-5" />;
     if (mimeType.startsWith('video/')) return <FileVideo className="w-5 h-5" />;
     return <File className="w-5 h-5" />;

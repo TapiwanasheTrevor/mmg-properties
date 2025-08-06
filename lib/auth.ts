@@ -315,3 +315,46 @@ export const hasAnyRole = async (roles: UserRole[], userId?: string): Promise<bo
 
 // Alias for signOutUser to match expected import
 export const logout = signOutUser;
+
+// Session validation function
+export const validateUserSession = async (userId?: string): Promise<boolean> => {
+  checkFirebaseConfig();
+  try {
+    const user = userId ? auth.currentUser : auth.currentUser;
+    if (!user) return false;
+    
+    // Check if user document exists in Firestore
+    const userDoc = await getDoc(doc(db, 'users', user.uid));
+    if (!userDoc.exists()) return false;
+    
+    const userData = userDoc.data() as AppUser;
+    return userData.isActive === true;
+  } catch (error) {
+    console.error('Session validation error:', error);
+    return false;
+  }
+};
+
+// Audit logging function
+export const logAuditEvent = async (
+  eventType: string,
+  eventData: Record<string, any>,
+  userId?: string
+): Promise<void> => {
+  checkFirebaseConfig();
+  try {
+    const user = userId || auth.currentUser?.uid;
+    if (!user) return;
+    
+    await setDoc(doc(db, 'audit_logs', `${user}_${Date.now()}`), {
+      userId: user,
+      eventType,
+      eventData,
+      timestamp: serverTimestamp(),
+      userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'server',
+      ipAddress: null, // Would need server-side implementation for real IP
+    });
+  } catch (error) {
+    console.error('Audit logging error:', error);
+  }
+};
