@@ -12,6 +12,9 @@ interface AuthContextType {
   user: AppUser | null;
   firebaseUser: FirebaseUser | null;
   loading: boolean;
+  error: string | null;
+  mfaRequired: boolean;
+  permissionsLoaded: boolean;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -26,6 +29,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [mfaRequired, setMfaRequired] = useState(false);
+  const [permissionsLoaded, setPermissionsLoaded] = useState(false);
 
   // Function to refresh user data from Firestore
   const refreshUser = async () => {
@@ -74,16 +80,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 ...userData,
                 id: firebaseUser.uid, // Ensure ID matches Firebase user ID
               });
+              setError(null);
             } else {
               // User document doesn't exist, might be a new user
               setUser(null);
+              setError('User document not found');
             }
             setLoading(false);
+            setPermissionsLoaded(true);
           },
           (error) => {
             console.error('Error listening to user document:', error);
             setUser(null);
+            setError(error.message);
             setLoading(false);
+            setPermissionsLoaded(true);
           }
         );
 
@@ -92,7 +103,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       } else {
         // User is signed out
         setUser(null);
+        setError(null);
         setLoading(false);
+        setPermissionsLoaded(true);
       }
     });
 
@@ -104,6 +117,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     user,
     firebaseUser,
     loading,
+    error,
+    mfaRequired,
+    permissionsLoaded,
     signOut,
     refreshUser,
   };

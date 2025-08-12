@@ -145,7 +145,35 @@ service cloud.firestore {
       );
     }
     
-    // Maintenance requests collection
+    // Maintenance collection (matches our seeded data)
+    match /maintenance/{requestId} {
+      allow read: if isAuthenticated() && isUserActive() && (
+        isAdmin() ||
+        resource.data.ownerId == request.auth.uid ||
+        resource.data.agentId == request.auth.uid ||
+        resource.data.tenantId == request.auth.uid
+      );
+      
+      allow create: if isAuthenticated() && isUserActive() && (
+        isTenant() && resource.data.tenantId == request.auth.uid ||
+        isAgentOrOwnerOrAdmin()
+      );
+      
+      allow update: if isAuthenticated() && isUserActive() && (
+        isAdmin() ||
+        resource.data.ownerId == request.auth.uid ||
+        resource.data.agentId == request.auth.uid ||
+        (resource.data.tenantId == request.auth.uid && resource.data.status == 'pending')
+      );
+      
+      allow delete: if isAuthenticated() && isUserActive() && (
+        isAdmin() || 
+        resource.data.ownerId == request.auth.uid ||
+        (resource.data.tenantId == request.auth.uid && resource.data.status == 'pending')
+      );
+    }
+
+    // Maintenance requests collection (legacy)
     match /maintenance_requests/{requestId} {
       allow read: if isAuthenticated() && isUserActive() && (
         isAdmin() ||
@@ -173,6 +201,25 @@ service cloud.firestore {
       );
     }
     
+    // Payments collection (matches our seeded data) 
+    match /payments/{paymentId} {
+      allow read: if isAuthenticated() && isUserActive() && (
+        isAdmin() ||
+        resource.data.ownerId == request.auth.uid ||
+        resource.data.tenantId == request.auth.uid
+      );
+      
+      allow create: if isAuthenticated() && isUserActive() && isAgentOrOwnerOrAdmin();
+      
+      allow update: if isAuthenticated() && isUserActive() && (
+        isAdmin() ||
+        resource.data.ownerId == request.auth.uid ||
+        resource.data.tenantId == request.auth.uid
+      );
+      
+      allow delete: if isAuthenticated() && isUserActive() && isAdmin();
+    }
+
     // Transactions collection
     match /transactions/{transactionId} {
       allow read: if isAuthenticated() && isUserActive() && (
@@ -295,6 +342,100 @@ service cloud.firestore {
       allow delete: if isAuthenticated() && isUserActive() && (
         isAdmin() || 
         isOwnerOfProperty(resource.data.propertyId)
+      );
+    }
+    
+    // Messages collection
+    match /messages/{messageId} {
+      allow read: if isAuthenticated() && isUserActive() && (
+        isAdmin() ||
+        resource.data.senderId == request.auth.uid ||
+        request.auth.uid in resource.data.recipients
+      );
+      
+      allow create: if isAuthenticated() && isUserActive() && (
+        resource.data.senderId == request.auth.uid
+      );
+      
+      allow update: if isAuthenticated() && isUserActive() && (
+        isAdmin() ||
+        resource.data.senderId == request.auth.uid ||
+        // Allow recipients to update read status
+        (request.auth.uid in resource.data.recipients && 
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['recipients']))
+      );
+      
+      allow delete: if isAuthenticated() && isUserActive() && (
+        isAdmin() ||
+        resource.data.senderId == request.auth.uid
+      );
+    }
+    
+    // Conversations collection
+    match /conversations/{conversationId} {
+      allow read: if isAuthenticated() && isUserActive() && (
+        isAdmin() ||
+        request.auth.uid in resource.data.participants ||
+        resource.data.createdBy == request.auth.uid
+      );
+      
+      allow create: if isAuthenticated() && isUserActive() && (
+        resource.data.createdBy == request.auth.uid &&
+        request.auth.uid in resource.data.participants
+      );
+      
+      allow update: if isAuthenticated() && isUserActive() && (
+        isAdmin() ||
+        request.auth.uid in resource.data.participants
+      );
+      
+      allow delete: if isAuthenticated() && isUserActive() && (
+        isAdmin() ||
+        resource.data.createdBy == request.auth.uid
+      );
+    }
+    
+    // Message notifications collection
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && isUserActive() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin()
+      );
+      
+      allow create: if isAuthenticated() && isUserActive();
+      
+      allow update: if isAuthenticated() && isUserActive() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin()
+      );
+      
+      allow delete: if isAuthenticated() && isUserActive() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin()
+      );
+    }
+    
+    // Typing indicators collection
+    match /typing/{typingId} {
+      allow read: if isAuthenticated() && isUserActive();
+      
+      allow create: if isAuthenticated() && isUserActive() && (
+        resource.data.userId == request.auth.uid
+      );
+      
+      allow update: if isAuthenticated() && isUserActive() && (
+        resource.data.userId == request.auth.uid
+      );
+      
+      allow delete: if isAuthenticated() && isUserActive() && (
+        resource.data.userId == request.auth.uid
+      );
+    }
+    
+    // Message drafts collection
+    match /drafts/{draftId} {
+      allow read, write: if isAuthenticated() && isUserActive() && (
+        resource.data.userId == request.auth.uid
       );
     }
     

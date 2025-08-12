@@ -36,8 +36,40 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { format, formatDistanceToNow } from 'date-fns';
-import { MaintenanceRequest, RequestStatus, RequestPriority, RequestCategory } from '@/lib/types';
-import { getMaintenanceRequests, deleteMaintenanceRequest, assignMaintenanceRequest, updateMaintenanceRequestStatus } from '@/lib/services/maintenance';
+// import { getMaintenanceRequests, deleteMaintenanceRequest, assignMaintenanceRequest, updateMaintenanceRequestStatus } from '@/lib/services/maintenance';
+
+// Types
+type RequestStatus = 'pending' | 'submitted' | 'assigned' | 'in_progress' | 'awaiting_approval' | 'completed' | 'cancelled';
+type RequestPriority = 'low' | 'medium' | 'high' | 'emergency';  
+type RequestCategory = 'plumbing' | 'electrical' | 'hvac' | 'structural' | 'appliance' | 'cleaning' | 'other';
+
+interface MaintenanceRequest {
+  id: string;
+  title: string;
+  description: string;
+  category: RequestCategory;
+  priority: RequestPriority;
+  status: RequestStatus;
+  propertyId: string;
+  unitId: string;
+  tenantId: string;
+  submittedBy?: string;
+  assignedTo?: string;
+  estimatedCost?: number;
+  createdAt: { toDate: () => Date };
+  tenant?: {
+    name: string;
+    email: string;
+    phone: string;
+  };
+  property?: {
+    name: string;
+    address: string;
+  };
+  unit?: {
+    number: string;
+  };
+}
 
 interface MaintenanceListProps {
   onRequestSelect?: (requestId: string) => void;
@@ -90,8 +122,58 @@ export default function MaintenanceList({
         filters.assignedTo = user.id;
       }
 
-      const result = await getMaintenanceRequests(filters);
-      setRequests(result.requests);
+      // Mock data instead of Firebase call
+      const mockRequests = [
+        {
+          id: '1',
+          title: 'Leaking faucet in kitchen',
+          description: 'The kitchen faucet has been leaking for the past week',
+          category: 'plumbing' as RequestCategory,
+          priority: 'high' as RequestPriority,
+          status: 'submitted' as RequestStatus,
+          propertyId: 'prop1',
+          unitId: 'unit1',
+          tenantId: 'tenant1',
+          createdAt: { toDate: () => new Date('2024-01-15') },
+          tenant: {
+            name: 'John Smith',
+            email: 'john@email.com',
+            phone: '+263 77 123 4567'
+          },
+          property: {
+            name: 'Sunset Apartments',
+            address: '123 Main St'
+          },
+          unit: {
+            number: 'A101'
+          }
+        },
+        {
+          id: '2',
+          title: 'Broken air conditioning',
+          description: 'AC unit not working, needs repair or replacement',
+          category: 'hvac' as RequestCategory,
+          priority: 'medium' as RequestPriority,
+          status: 'in_progress' as RequestStatus,
+          propertyId: 'prop2',
+          unitId: 'unit2',
+          tenantId: 'tenant2',
+          createdAt: { toDate: () => new Date('2024-01-10') },
+          tenant: {
+            name: 'Jane Doe',
+            email: 'jane@email.com',
+            phone: '+263 77 987 6543'
+          },
+          property: {
+            name: 'Downtown Lofts',
+            address: '456 Oak Ave'
+          },
+          unit: {
+            number: 'B202'
+          }
+        }
+      ];
+      setRequests(mockRequests);
     } catch (error: any) {
       setError(error.message);
     } finally {
@@ -105,7 +187,7 @@ export default function MaintenanceList({
     }
 
     try {
-      await deleteMaintenanceRequest(requestId);
+      // Mock delete - just remove from state
       setRequests(prev => prev.filter(r => r.id !== requestId));
     } catch (error: any) {
       setError(error.message);
@@ -114,7 +196,7 @@ export default function MaintenanceList({
 
   const handleStatusUpdate = async (requestId: string, status: RequestStatus) => {
     try {
-      await updateMaintenanceRequestStatus(requestId, status);
+      // Mock status update - just update state
       setRequests(prev => 
         prev.map(r => r.id === requestId ? { ...r, status } : r)
       );
@@ -134,25 +216,27 @@ export default function MaintenanceList({
   const getStatusColor = (status: RequestStatus) => {
     const colors = {
       pending: 'bg-yellow-100 text-yellow-800',
+      submitted: 'bg-yellow-100 text-yellow-800',
       assigned: 'bg-blue-100 text-blue-800',
       in_progress: 'bg-orange-100 text-orange-800',
       awaiting_approval: 'bg-purple-100 text-purple-800',
       completed: 'bg-green-100 text-green-800',
       cancelled: 'bg-gray-100 text-gray-800',
     };
-    return colors[status];
+    return colors[status] || 'bg-gray-100 text-gray-800';
   };
 
   const getStatusIcon = (status: RequestStatus) => {
     const icons = {
       pending: Clock,
+      submitted: Clock,
       assigned: User,
       in_progress: Wrench,
       awaiting_approval: AlertCircle,
       completed: CheckCircle,
       cancelled: XCircle,
     };
-    return icons[status];
+    return icons[status] || Clock;
   };
 
   const getPriorityColor = (priority: RequestPriority) => {

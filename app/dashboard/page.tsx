@@ -10,6 +10,10 @@ import TenantDashboard from '@/components/dashboard/tenant-dashboard';
 export default function DashboardPage() {
   const { user, loading } = useAuth();
 
+  // Debug logging
+  console.log('Dashboard Page - Loading:', loading);
+  console.log('Dashboard Page - User:', user);
+
   if (loading) {
     return (
       <AppLayout title="Dashboard">
@@ -24,7 +28,19 @@ export default function DashboardPage() {
   }
 
   const getDashboardComponent = () => {
-    if (!user) return null;
+    if (!user) {
+      console.log('No user found, returning null');
+      return (
+        <div className="p-6 text-center">
+          <h2 className="text-xl font-semibold text-gray-900">
+            No user data
+          </h2>
+          <p className="text-gray-600 mt-2">
+            User authentication data not available. Please refresh the page.
+          </p>
+        </div>
+      );
+    }
 
     switch (user.role) {
       case 'admin':
@@ -51,9 +67,7 @@ export default function DashboardPage() {
 
   return (
     <AppLayout title="Dashboard">
-      <div className="p-6">
-        {getDashboardComponent()}
-      </div>
+      {getDashboardComponent()}
     </AppLayout>
   );
 }

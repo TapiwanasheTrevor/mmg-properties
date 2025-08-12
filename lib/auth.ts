@@ -62,7 +62,16 @@ export const signInWithEmail = async (email: string, password: string): Promise<
   checkFirebaseConfig();
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    await updateLastLogin(userCredential.user.uid);
+    
+    // Check if user document exists, create if not
+    const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
+    if (!userDoc.exists()) {
+      // Create user document with default tenant role
+      await createUserDocument(userCredential.user, 'tenant');
+    } else {
+      await updateLastLogin(userCredential.user.uid);
+    }
+    
     return userCredential;
   } catch (error) {
     throw new Error(handleAuthError(error));
@@ -72,18 +81,21 @@ export const signInWithEmail = async (email: string, password: string): Promise<
 export const signUpWithEmail = async (
   email: string,
   password: string,
-  displayName: string,
-  role: UserRole = 'tenant'
+  role: UserRole = 'tenant',
+  profile?: { firstName: string; lastName: string }
 ): Promise<UserCredential> => {
   checkFirebaseConfig();
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     
-    // Update user profile
-    await updateProfile(userCredential.user, { displayName });
+    // Update user profile with display name if profile provided
+    if (profile) {
+      const displayName = `${profile.firstName} ${profile.lastName}`;
+      await updateProfile(userCredential.user, { displayName });
+    }
     
     // Create user document in Firestore
-    await createUserDocument(userCredential.user, role);
+    await createUserDocument(userCredential.user, role, profile);
     
     return userCredential;
   } catch (error) {
@@ -196,17 +208,21 @@ export const onAuthStateChange = (callback: (user: User | null) => void) => {
 };
 
 // User Document Management
-const createUserDocument = async (user: User, role: UserRole): Promise<void> => {
+const createUserDocument = async (
+  user: User, 
+  role: UserRole, 
+  profile?: { firstName: string; lastName: string }
+): Promise<void> => {
   const userData: Partial<AppUser> = {
     id: user.uid,
     email: user.email!,
     role,
     profile: {
-      firstName: user.displayName?.split(' ')[0] || '',
-      lastName: user.displayName?.split(' ').slice(1).join(' ') || '',
-      avatar: user.photoURL || undefined,
+      firstName: profile?.firstName || user.displayName?.split(' ')[0] || '',
+      lastName: profile?.lastName || user.displayName?.split(' ').slice(1).join(' ') || '',
+      ...(user.photoURL && { avatar: user.photoURL }), // Only include avatar if it exists
     },
-    phone: user.phoneNumber || undefined,
+    ...(user.phoneNumber && { phone: user.phoneNumber }), // Only include phone if it exists
     permissions: getDefaultPermissions(role),
     isActive: true,
     mfaEnabled: false,
@@ -219,9 +235,22 @@ const createUserDocument = async (user: User, role: UserRole): Promise<void> => 
 };
 
 const updateLastLogin = async (userId: string): Promise<void> => {
-  await updateDoc(doc(db, 'users', userId), {
-    lastLogin: serverTimestamp(),
-  });
+  try {
+    // Check if document exists before updating
+    const userDocRef = doc(db, 'users', userId);
+    const userDoc = await getDoc(userDocRef);
+    
+    if (userDoc.exists()) {
+      await updateDoc(userDocRef, {
+        lastLogin: serverTimestamp(),
+      });
+    } else {
+      console.warn(`User document ${userId} does not exist, cannot update lastLogin`);
+    }
+  } catch (error) {
+    console.error('Error updating lastLogin:', error);
+    // Don't throw error to prevent login failure
+  }
 };
 
 // Get default permissions based on role

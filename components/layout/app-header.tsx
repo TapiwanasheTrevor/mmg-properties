@@ -159,14 +159,14 @@ export default function AppHeader({ title, actions }: AppHeaderProps) {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-9 px-2">
                 <Avatar className="h-6 w-6 mr-2">
-                  <AvatarImage src={user.profile.avatar} />
+                  <AvatarImage src={user.profile?.avatar} />
                   <AvatarFallback className="text-xs">
-                    {user.profile.firstName.charAt(0)}
-                    {user.profile.lastName.charAt(0)}
+                    {user.profile?.firstName?.charAt(0) || user.email?.charAt(0) || 'U'}
+                    {user.profile?.lastName?.charAt(0) || ''}
                   </AvatarFallback>
                 </Avatar>
                 <span className="hidden md:inline text-sm">
-                  {user.profile.firstName}
+                  {user.profile?.firstName || user.email?.split('@')[0] || 'User'}
                 </span>
               </Button>
             </DropdownMenuTrigger>
@@ -174,7 +174,7 @@ export default function AppHeader({ title, actions }: AppHeaderProps) {
               <DropdownMenuLabel>
                 <div className="flex flex-col space-y-1">
                   <div className="font-medium">
-                    {user.profile.firstName} {user.profile.lastName}
+                    {user.profile?.firstName || user.email?.split('@')[0] || 'User'} {user.profile?.lastName || ''}
                   </div>
                   <div className="text-xs text-gray-500">{user.email}</div>
                 </div>

@@ -197,16 +197,16 @@ export default function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
             <Button variant="ghost" className="w-full justify-start p-2 h-auto">
               <div className="flex items-center space-x-3">
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src={user.profile.avatar} />
+                  <AvatarImage src={user.profile?.avatar} />
                   <AvatarFallback>
-                    {user.profile.firstName.charAt(0)}
-                    {user.profile.lastName.charAt(0)}
+                    {user.profile?.firstName?.charAt(0) || user.email?.charAt(0) || 'U'}
+                    {user.profile?.lastName?.charAt(0) || ''}
                   </AvatarFallback>
                 </Avatar>
                 {!collapsed && (
                   <div className="flex-1 text-left">
                     <p className="text-sm font-medium">
-                      {user.profile.firstName} {user.profile.lastName}
+                      {user.profile?.firstName || user.email?.split('@')[0] || 'User'} {user.profile?.lastName || ''}
                     </p>
                     <Badge
                       variant="secondary"

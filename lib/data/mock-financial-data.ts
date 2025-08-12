@@ -1,0 +1,503 @@
+import { Timestamp } from 'firebase/firestore';
+import { 
+  FinancialTransaction, 
+  Budget, 
+  ReconciliationRecord, 
+  RentCollection, 
+  FinancialMetrics,
+  ExpenseCategory,
+  Currency,
+  PaymentMethod,
+  TransactionCategory 
+} from '@/lib/types/financials';
+
+// Helper function to create mock timestamp
+const createMockTimestamp = (daysAgo: number = 0): Timestamp => {
+  const date = new Date();
+  date.setDate(date.getDate() - daysAgo);
+  return Timestamp.fromDate(date);
+};
+
+// Mock Properties for reference
+export const mockProperties = [
+  { id: 'prop-1', name: 'Sunrise Apartments', ownerId: 'owner-1' },
+  { id: 'prop-2', name: 'Garden View Complex', ownerId: 'owner-2' },
+  { id: 'prop-3', name: 'City Center Towers', ownerId: 'owner-1' },
+  { id: 'prop-4', name: 'Suburban Heights', ownerId: 'owner-3' },
+];
+
+// Mock Units
+export const mockUnits = [
+  { id: 'unit-1', propertyId: 'prop-1', unitNumber: '101', tenantId: 'tenant-1' },
+  { id: 'unit-2', propertyId: 'prop-1', unitNumber: '102', tenantId: 'tenant-2' },
+  { id: 'unit-3', propertyId: 'prop-2', unitNumber: '201', tenantId: 'tenant-3' },
+  { id: 'unit-4', propertyId: 'prop-2', unitNumber: '202', tenantId: null },
+  { id: 'unit-5', propertyId: 'prop-3', unitNumber: '301', tenantId: 'tenant-4' },
+];
+
+// Mock Tenants
+export const mockTenants = [
+  { id: 'tenant-1', name: 'John Mukamuri', email: 'john.m@email.com' },
+  { id: 'tenant-2', name: 'Sarah Chitepo', email: 'sarah.c@email.com' },
+  { id: 'tenant-3', name: 'David Moyo', email: 'david.m@email.com' },
+  { id: 'tenant-4', name: 'Grace Sibanda', email: 'grace.s@email.com' },
+];
+
+// Mock Financial Transactions
+export const mockTransactions: FinancialTransaction[] = [
+  {
+    id: 'trans-1',
+    type: 'rent_payment',
+    amount: 800,
+    currency: 'USD',
+    description: 'December 2024 Rent Payment - Sunrise Apartments Unit 101',
+    propertyId: 'prop-1',
+    propertyName: 'Sunrise Apartments',
+    unitId: 'unit-1',
+    unitNumber: '101',
+    tenantId: 'tenant-1',
+    tenantName: 'John Mukamuri',
+    leaseId: 'lease-1',
+    paymentMethod: 'ecocash',
+    reference: 'EC-2024120001',
+    bankReference: 'ECO240001',
+    receiptNumber: 'REC-001-2024',
+    status: 'completed',
+    reconciliationStatus: 'reconciled',
+    isReconciled: true,
+    allocation: {
+      ownerAmount: 680,
+      mmgCommission: 120,
+      vatAmount: 116,
+      withholdingTax: 40,
+    },
+    attachments: ['/receipts/rec-001-2024.pdf'],
+    receiptUrl: '/receipts/rec-001-2024.pdf',
+    createdBy: 'agent-1',
+    processedBy: 'agent-1',
+    reconciledBy: 'admin-1',
+    notes: 'Payment received on time via EcoCash',
+    createdAt: createMockTimestamp(5),
+    processedAt: createMockTimestamp(5),
+    reconciledAt: createMockTimestamp(3),
+    updatedAt: createMockTimestamp(3),
+  },
+  {
+    id: 'trans-2',
+    type: 'rent_payment',
+    amount: 1200,
+    currency: 'USD',
+    description: 'December 2024 Rent Payment - Garden View Complex Unit 201',
+    propertyId: 'prop-2',
+    propertyName: 'Garden View Complex',
+    unitId: 'unit-3',
+    unitNumber: '201',
+    tenantId: 'tenant-3',
+    tenantName: 'David Moyo',
+    leaseId: 'lease-3',
+    paymentMethod: 'bank_transfer',
+    reference: 'BT-2024120002',
+    bankReference: 'CBZ240002',
+    receiptNumber: 'REC-002-2024',
+    status: 'completed',
+    reconciliationStatus: 'reconciled',
+    isReconciled: true,
+    allocation: {
+      ownerAmount: 1020,
+      mmgCommission: 180,
+      vatAmount: 174,
+      withholdingTax: 60,
+    },
+    attachments: ['/receipts/rec-002-2024.pdf'],
+    createdBy: 'agent-1',
+    processedBy: 'agent-1',
+    reconciledBy: 'admin-1',
+    createdAt: createMockTimestamp(7),
+    processedAt: createMockTimestamp(7),
+    reconciledAt: createMockTimestamp(5),
+    updatedAt: createMockTimestamp(5),
+  },
+  {
+    id: 'trans-3',
+    type: 'maintenance_cost',
+    amount: 450,
+    currency: 'USD',
+    description: 'Plumbing repair - Sunrise Apartments Unit 102',
+    propertyId: 'prop-1',
+    propertyName: 'Sunrise Apartments',
+    unitId: 'unit-2',
+    unitNumber: '102',
+    paymentMethod: 'bank_transfer',
+    reference: 'MAINT-2024120003',
+    receiptNumber: 'EXP-003-2024',
+    status: 'completed',
+    reconciliationStatus: 'reconciled',
+    isReconciled: true,
+    allocation: {
+      ownerAmount: -450,
+      mmgCommission: 0,
+      vatAmount: 65.25,
+    },
+    attachments: ['/invoices/maintenance-003-2024.pdf'],
+    createdBy: 'agent-1',
+    processedBy: 'admin-1',
+    reconciledBy: 'admin-1',
+    notes: 'Emergency plumbing repair completed',
+    createdAt: createMockTimestamp(10),
+    processedAt: createMockTimestamp(9),
+    reconciledAt: createMockTimestamp(7),
+    updatedAt: createMockTimestamp(7),
+  },
+  {
+    id: 'trans-4',
+    type: 'deposit',
+    amount: 1600,
+    currency: 'USD',
+    description: 'Security Deposit - City Center Towers Unit 301',
+    propertyId: 'prop-3',
+    propertyName: 'City Center Towers',
+    unitId: 'unit-5',
+    unitNumber: '301',
+    tenantId: 'tenant-4',
+    tenantName: 'Grace Sibanda',
+    leaseId: 'lease-5',
+    paymentMethod: 'rtgs',
+    reference: 'DEP-2024120004',
+    bankReference: 'RTGS240004',
+    receiptNumber: 'REC-004-2024',
+    status: 'completed',
+    reconciliationStatus: 'pending',
+    isReconciled: false,
+    allocation: {
+      ownerAmount: 1600,
+      mmgCommission: 0,
+    },
+    attachments: ['/receipts/rec-004-2024.pdf'],
+    createdBy: 'agent-1',
+    processedBy: 'agent-1',
+    createdAt: createMockTimestamp(2),
+    processedAt: createMockTimestamp(2),
+    updatedAt: createMockTimestamp(1),
+  },
+  {
+    id: 'trans-5',
+    type: 'service_fee',
+    amount: 200,
+    currency: 'USD',
+    description: 'Monthly Management Fee - December 2024',
+    propertyId: 'prop-1',
+    propertyName: 'Sunrise Apartments',
+    paymentMethod: 'bank_transfer',
+    reference: 'SVC-2024120005',
+    receiptNumber: 'FEE-005-2024',
+    status: 'pending',
+    reconciliationStatus: 'pending',
+    isReconciled: false,
+    allocation: {
+      ownerAmount: 0,
+      mmgCommission: 200,
+      vatAmount: 29,
+    },
+    attachments: [],
+    createdBy: 'admin-1',
+    notes: 'Monthly management fee for December 2024',
+    createdAt: createMockTimestamp(1),
+    updatedAt: createMockTimestamp(1),
+  },
+];
+
+// Mock Expense Categories
+export const mockExpenseCategories: ExpenseCategory[] = [
+  {
+    id: 'cat-1',
+    name: 'Maintenance & Repairs',
+    description: 'Property maintenance and repair costs',
+    isActive: true,
+    isTaxDeductible: true,
+    vatApplicable: true,
+    withholdingTaxApplicable: false,
+    vatRate: 14.5,
+    createdAt: createMockTimestamp(30),
+    updatedAt: createMockTimestamp(30),
+  },
+  {
+    id: 'cat-2',
+    name: 'Utilities',
+    description: 'Water, electricity, and other utilities',
+    isActive: true,
+    isTaxDeductible: true,
+    vatApplicable: true,
+    withholdingTaxApplicable: false,
+    vatRate: 14.5,
+    createdAt: createMockTimestamp(30),
+    updatedAt: createMockTimestamp(30),
+  },
+  {
+    id: 'cat-3',
+    name: 'Professional Services',
+    description: 'Legal, accounting, and consulting fees',
+    isActive: true,
+    isTaxDeductible: true,
+    vatApplicable: true,
+    withholdingTaxApplicable: true,
+    vatRate: 14.5,
+    withholdingTaxRate: 10,
+    createdAt: createMockTimestamp(30),
+    updatedAt: createMockTimestamp(30),
+  },
+  {
+    id: 'cat-4',
+    name: 'Insurance',
+    description: 'Property insurance premiums',
+    isActive: true,
+    isTaxDeductible: true,
+    vatApplicable: false,
+    withholdingTaxApplicable: false,
+    createdAt: createMockTimestamp(30),
+    updatedAt: createMockTimestamp(30),
+  },
+  {
+    id: 'cat-5',
+    name: 'Property Management',
+    description: 'Management fees and commissions',
+    isActive: true,
+    isTaxDeductible: true,
+    vatApplicable: true,
+    withholdingTaxApplicable: false,
+    vatRate: 14.5,
+    createdAt: createMockTimestamp(30),
+    updatedAt: createMockTimestamp(30),
+  },
+];
+
+// Mock Budgets
+export const mockBudgets: Budget[] = [
+  {
+    id: 'budget-1',
+    propertyId: 'prop-1',
+    name: '2024 Q4 Budget - Sunrise Apartments',
+    description: 'Fourth quarter operational budget for Sunrise Apartments',
+    period: 'quarterly',
+    startDate: createMockTimestamp(90),
+    endDate: createMockTimestamp(0),
+    categories: {
+      'cat-1': { budgeted: 2000, actual: 1850, variance: -150, currency: 'USD' },
+      'cat-2': { budgeted: 800, actual: 750, variance: -50, currency: 'USD' },
+      'cat-3': { budgeted: 500, actual: 600, variance: 100, currency: 'USD' },
+      'cat-4': { budgeted: 1200, actual: 1200, variance: 0, currency: 'USD' },
+      'cat-5': { budgeted: 1500, actual: 1400, variance: -100, currency: 'USD' },
+    },
+    totalBudgeted: 6000,
+    totalActual: 5800,
+    totalVariance: -200,
+    status: 'active',
+    createdBy: 'owner-1',
+    createdAt: createMockTimestamp(90),
+    updatedAt: createMockTimestamp(1),
+  },
+];
+
+// Mock Reconciliation Records
+export const mockReconciliationRecords: ReconciliationRecord[] = [
+  {
+    id: 'recon-1',
+    period: '2024-12',
+    propertyId: 'prop-1',
+    bankStatementTotal: 12450.75,
+    systemTotal: 12500.00,
+    difference: -49.25,
+    reconciledTransactions: ['trans-1', 'trans-3'],
+    unreconciledTransactions: ['trans-5'],
+    discrepancies: [
+      {
+        transactionId: 'trans-1',
+        systemAmount: 800.00,
+        bankAmount: 795.75,
+        difference: -4.25,
+        reason: 'Bank charges deducted',
+      },
+    ],
+    status: 'pending',
+    reconciledBy: 'admin-1',
+    notes: 'Minor discrepancy due to bank charges',
+    createdAt: createMockTimestamp(2),
+  },
+];
+
+// Mock Rent Collections
+export const mockRentCollections: RentCollection[] = [
+  {
+    id: 'rent-1',
+    leaseId: 'lease-1',
+    tenantId: 'tenant-1',
+    propertyId: 'prop-1',
+    unitId: 'unit-1',
+    period: '2024-12',
+    dueDate: createMockTimestamp(10),
+    rentAmount: 800,
+    currency: 'USD',
+    amountPaid: 800,
+    amountOutstanding: 0,
+    isFullyPaid: true,
+    isOverdue: false,
+    daysOverdue: 0,
+    payments: [
+      {
+        transactionId: 'trans-1',
+        amount: 800,
+        paidDate: createMockTimestamp(5),
+        paymentMethod: 'ecocash',
+      },
+    ],
+    lateFees: 0,
+    penalties: 0,
+    collectionStatus: 'current',
+    remindersSent: [
+      {
+        type: 'initial',
+        sentDate: createMockTimestamp(15),
+        method: 'email',
+      },
+    ],
+    createdAt: createMockTimestamp(30),
+    updatedAt: createMockTimestamp(5),
+  },
+  {
+    id: 'rent-2',
+    leaseId: 'lease-2',
+    tenantId: 'tenant-2',
+    propertyId: 'prop-1',
+    unitId: 'unit-2',
+    period: '2024-12',
+    dueDate: createMockTimestamp(10),
+    rentAmount: 900,
+    currency: 'USD',
+    amountPaid: 0,
+    amountOutstanding: 900,
+    isFullyPaid: false,
+    isOverdue: true,
+    daysOverdue: 5,
+    payments: [],
+    lateFees: 45,
+    penalties: 0,
+    collectionStatus: 'overdue',
+    remindersSent: [
+      {
+        type: 'initial',
+        sentDate: createMockTimestamp(15),
+        method: 'email',
+      },
+      {
+        type: 'reminder',
+        sentDate: createMockTimestamp(8),
+        method: 'sms',
+      },
+      {
+        type: 'final_notice',
+        sentDate: createMockTimestamp(3),
+        method: 'whatsapp',
+      },
+    ],
+    notes: 'Tenant contacted, payment promised by end of week',
+    createdAt: createMockTimestamp(30),
+    updatedAt: createMockTimestamp(1),
+  },
+];
+
+// Mock Financial Metrics
+export const mockFinancialMetrics: FinancialMetrics = {
+  period: '2024-12',
+  currency: 'USD',
+  totalIncome: 15750,
+  totalExpenses: 3420,
+  netIncome: 12330,
+  rentDue: 8500,
+  rentCollected: 7600,
+  collectionRate: 89.4,
+  outstandingAmount: 900,
+  occupancyRate: 85.7,
+  averageRentPSF: 1.25,
+  monthlyTrends: [
+    { month: '2024-09', income: 14500, expenses: 3200, net: 11300, collectionRate: 92.1 },
+    { month: '2024-10', income: 15200, expenses: 2850, net: 12350, collectionRate: 94.7 },
+    { month: '2024-11', income: 14800, expenses: 3650, net: 11150, collectionRate: 88.2 },
+    { month: '2024-12', income: 15750, expenses: 3420, net: 12330, collectionRate: 89.4 },
+  ],
+  topProperties: [
+    { propertyId: 'prop-3', propertyName: 'City Center Towers', netIncome: 4200, roi: 8.4 },
+    { propertyId: 'prop-2', propertyName: 'Garden View Complex', netIncome: 3800, roi: 7.6 },
+    { propertyId: 'prop-1', propertyName: 'Sunrise Apartments', netIncome: 3200, roi: 6.9 },
+    { propertyId: 'prop-4', propertyName: 'Suburban Heights', netIncome: 1130, roi: 4.2 },
+  ],
+  expenseByCategory: [
+    { category: 'Maintenance & Repairs', amount: 1850, percentage: 54.1 },
+    { category: 'Utilities', amount: 750, percentage: 21.9 },
+    { category: 'Professional Services', amount: 600, percentage: 17.5 },
+    { category: 'Property Management', amount: 220, percentage: 6.5 },
+  ],
+  collectionStatus: {
+    current: 7600,
+    overdue: 900,
+    inArrears: 0,
+  },
+  generatedAt: createMockTimestamp(0),
+};
+
+// Helper functions for generating additional mock data
+export const generateMockTransaction = (
+  overrides: Partial<FinancialTransaction> = {}
+): FinancialTransaction => {
+  const baseTransaction: FinancialTransaction = {
+    id: `trans-${Date.now()}`,
+    type: 'rent_payment',
+    amount: 1000,
+    currency: 'USD',
+    description: 'Mock transaction',
+    propertyId: 'prop-1',
+    propertyName: 'Mock Property',
+    paymentMethod: 'bank_transfer',
+    reference: `REF-${Date.now()}`,
+    status: 'pending',
+    isReconciled: false,
+    allocation: {
+      ownerAmount: 850,
+      mmgCommission: 150,
+    },
+    attachments: [],
+    createdBy: 'mock-user',
+    createdAt: createMockTimestamp(0),
+    updatedAt: createMockTimestamp(0),
+    ...overrides,
+  };
+
+  return baseTransaction;
+};
+
+export const generateMockRentCollection = (
+  overrides: Partial<RentCollection> = {}
+): RentCollection => {
+  return {
+    id: `rent-${Date.now()}`,
+    leaseId: 'mock-lease',
+    tenantId: 'mock-tenant',
+    propertyId: 'mock-property',
+    unitId: 'mock-unit',
+    period: '2024-12',
+    dueDate: createMockTimestamp(5),
+    rentAmount: 1000,
+    currency: 'USD',
+    amountPaid: 0,
+    amountOutstanding: 1000,
+    isFullyPaid: false,
+    isOverdue: false,
+    daysOverdue: 0,
+    payments: [],
+    lateFees: 0,
+    penalties: 0,
+    collectionStatus: 'current',
+    remindersSent: [],
+    createdAt: createMockTimestamp(30),
+    updatedAt: createMockTimestamp(0),
+    ...overrides,
+  };
+};

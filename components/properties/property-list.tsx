@@ -361,7 +361,7 @@ export default function PropertyList({ onPropertySelect }: PropertyListProps) {
                       Monthly Income:
                     </span>
                     <span className="font-medium text-green-600">
-                      ${property.monthlyIncome.toLocaleString()}
+                      ${(property.monthlyIncome || 0).toLocaleString()}
                     </span>
                   </div>
                   

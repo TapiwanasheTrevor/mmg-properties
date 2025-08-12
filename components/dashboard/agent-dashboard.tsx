@@ -1,21 +1,180 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { CheckCircle, Clock, AlertTriangle, Building2, Star, Calendar } from "lucide-react"
+'use client';
 
-export default function AgentDashboard() {
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { 
+  CheckCircle, 
+  Clock, 
+  AlertTriangle, 
+  Building2, 
+  Star, 
+  Calendar,
+  MapPin,
+  Camera,
+  Navigation,
+  Phone,
+  MessageSquare,
+  FileText,
+  Wrench,
+  Eye,
+  Route,
+  Wifi,
+  WifiOff
+} from "lucide-react";
+import { useAuth } from '@/hooks/useAuth';
+import { useAgentDashboard, useRealtimeMaintenanceRequests } from '@/hooks/useRealtimeProperties';
+import { formatDate } from '@/lib/utils';
+import Link from 'next/link';
+
+interface AgentDashboardProps {
+  className?: string;
+}
+
+export default function AgentDashboard({ className }: AgentDashboardProps) {
+  const { user } = useAuth();
+  const [currentLocation, setCurrentLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [isOnline, setIsOnline] = useState(true);
+  const [workStatus, setWorkStatus] = useState<'available' | 'busy' | 'offline'>('available');
+  
+  // Real-time agent data
+  const { agentData, loading: agentLoading, error } = useAgentDashboard(user?.id || '');
+  const { requests: myMaintenanceRequests, loading: requestsLoading } = useRealtimeMaintenanceRequests({
+    agentId: user?.id,
+    status: 'assigned'
+  });
+
+  // Track online/offline status
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // Get current location for GPS tracking
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setCurrentLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+        },
+        (error) => {
+          console.error('Geolocation error:', error);
+        }
+      );
+    }
+  }, []);
+
+  const toggleWorkStatus = () => {
+    setWorkStatus(current => {
+      switch (current) {
+        case 'available': return 'busy';
+        case 'busy': return 'offline';
+        case 'offline': return 'available';
+        default: return 'available';
+      }
+    });
+  };
+
+  const getDirections = (propertyAddress: string) => {
+    if (currentLocation) {
+      const url = `https://www.google.com/maps/dir/${currentLocation.lat},${currentLocation.lng}/${encodeURIComponent(propertyAddress)}`;
+      window.open(url, '_blank');
+    }
+  };
+
+  if (error) {
+    return (
+      <Alert className="mb-6">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertDescription>
+          Error loading agent data. Please check your connection and refresh.
+        </AlertDescription>
+      </Alert>
+    );
+  }
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${className}`}>
+      {/* Field Agent Status Bar */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                {isOnline ? (
+                  <Wifi className="w-4 h-4 text-green-600" />
+                ) : (
+                  <WifiOff className="w-4 h-4 text-red-600" />
+                )}
+                <span className="text-sm font-medium">
+                  {isOnline ? 'Online' : 'Offline'}
+                </span>
+              </div>
+              
+              <Badge 
+                variant={workStatus === 'available' ? 'default' : workStatus === 'busy' ? 'secondary' : 'destructive'}
+                className="cursor-pointer"
+                onClick={toggleWorkStatus}
+              >
+                {workStatus === 'available' && '🟢 Available'}
+                {workStatus === 'busy' && '🟡 Busy'}
+                {workStatus === 'offline' && '🔴 Off Duty'}
+              </Badge>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              {currentLocation && (
+                <Badge variant="outline" className="text-xs">
+                  <MapPin className="w-3 h-3 mr-1" />
+                  GPS Active
+                </Badge>
+              )}
+              <span className="text-xs text-gray-500">
+                {new Date().toLocaleTimeString('en-ZW', { 
+                  timeZone: 'Africa/Harare',
+                  hour12: true 
+                })} CAT
+              </span>
+            </div>
+          </div>
+          
+          <div className="text-xs text-gray-600">
+            Field Agent: {user?.profile.firstName} {user?.profile.lastName} • ID: {user?.id?.slice(-6)}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Agent Performance Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Assigned Properties</CardTitle>
+            <CardTitle className="text-sm font-medium">My Properties</CardTitle>
             <Building2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12</div>
-            <p className="text-xs text-muted-foreground">3 new this month</p>
+            {agentLoading ? (
+              <Skeleton className="h-8 w-8" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{agentData.assignedProperties.length}</div>
+                <p className="text-xs text-muted-foreground">
+                  Active assignments
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -25,30 +184,38 @@ export default function AgentDashboard() {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">8</div>
-            <p className="text-xs text-muted-foreground">2 overdue</p>
+            {requestsLoading ? (
+              <Skeleton className="h-8 w-8" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{myMaintenanceRequests.length}</div>
+                <p className="text-xs text-muted-foreground">
+                  {myMaintenanceRequests.filter(r => r.priority === 'high').length} high priority
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completed This Month</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Today's Tasks</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">24</div>
-            <p className="text-xs text-muted-foreground">+15% from last month</p>
+            <div className="text-2xl font-bold">{agentData.todayTasks?.length || 0}</div>
+            <p className="text-xs text-muted-foreground">Scheduled for today</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Satisfaction Rating</CardTitle>
+            <CardTitle className="text-sm font-medium">Rating</CardTitle>
             <Star className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">4.8</div>
-            <p className="text-xs text-muted-foreground">Based on 45 reviews</p>
+            <div className="text-2xl font-bold">4.9</div>
+            <p className="text-xs text-muted-foreground">Agent rating</p>
           </CardContent>
         </Card>
       </div>

@@ -38,7 +38,10 @@ export default function LoginForm() {
 
     try {
       await signInWithEmail(email, password);
-      router.push('/dashboard');
+      // Get redirect URL from query params or default to dashboard
+      const urlParams = new URLSearchParams(window.location.search);
+      const redirectUrl = urlParams.get('redirect') || '/dashboard';
+      router.push(redirectUrl);
     } catch (error: any) {
       setError(error.message);
     } finally {
@@ -53,7 +56,10 @@ export default function LoginForm() {
 
     try {
       await signInWithGoogle();
-      router.push('/dashboard');
+      // Get redirect URL from query params or default to dashboard
+      const urlParams = new URLSearchParams(window.location.search);
+      const redirectUrl = urlParams.get('redirect') || '/dashboard';
+      router.push(redirectUrl);
     } catch (error: any) {
       setError(error.message);
     } finally {
@@ -98,7 +104,10 @@ export default function LoginForm() {
 
     try {
       await verifyOTP(verificationId, otp);
-      router.push('/dashboard');
+      // Get redirect URL from query params or default to dashboard
+      const urlParams = new URLSearchParams(window.location.search);
+      const redirectUrl = urlParams.get('redirect') || '/dashboard';
+      router.push(redirectUrl);
     } catch (error: any) {
       setError(error.message);
     } finally {

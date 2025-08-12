@@ -9,7 +9,9 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
-import { AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
+import { AlertCircle, Eye, EyeOff, MapPin, Phone, CreditCard, Info } from 'lucide-react';
 import { signUpWithEmail, signInWithGoogle } from '@/lib/auth';
 import { UserRole } from '@/lib/types';
 
@@ -28,11 +30,53 @@ export default function RegisterForm() {
     password: '',
     confirmPassword: '',
     role: 'owner' as UserRole,
+    phone: '',
+    nationalId: '',
+    address: '',
+    city: 'Harare',
+    country: 'Zimbabwe',
+    acceptTerms: false,
+    agreeToSMS: false,
   });
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
+
+  // Zimbabwe National ID validation
+  const validateNationalId = (id: string): boolean => {
+    // Zimbabwe National ID format: 12-345678-A-12
+    const regex = /^\d{2}-\d{6}-[A-Z]-\d{2}$/;
+    return regex.test(id);
+  };
+
+  // Zimbabwe phone number validation
+  const validateZimbabwePhone = (phone: string): boolean => {
+    // Formats: +263123456789, 0123456789, 263123456789
+    const cleanPhone = phone.replace(/[\s\-]/g, '');
+    const regex = /^(\+263|263|0)[7-9]\d{8}$/;
+    return regex.test(cleanPhone);
+  };
+
+  // Format phone number to standard format
+  const formatPhoneNumber = (phone: string): string => {
+    const cleanPhone = phone.replace(/[\s\-]/g, '');
+    if (cleanPhone.startsWith('0')) {
+      return `+263${cleanPhone.slice(1)}`;
+    } else if (cleanPhone.startsWith('263')) {
+      return `+${cleanPhone}`;
+    } else if (cleanPhone.startsWith('+263')) {
+      return cleanPhone;
+    }
+    return phone;
+  };
+
+  // Zimbabwe cities for validation
+  const zimbabweCities = [
+    'Harare', 'Bulawayo', 'Chitungwiza', 'Mutare', 'Epworth', 'Gweru', 'Kwekwe', 
+    'Kadoma', 'Masvingo', 'Chinhoyi', 'Norton', 'Marondera', 'Ruwa', 'Chegutu',
+    'Zvishavane', 'Bindura', 'Beitbridge', 'Redcliff', 'Victoria Falls', 'Hwange'
+  ];
 
   const validateForm = () => {
     if (!formData.firstName.trim()) {
@@ -50,13 +94,48 @@ export default function RegisterForm() {
       return false;
     }
     
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters long');
+    // Validate phone number
+    if (!formData.phone.trim()) {
+      setError('Phone number is required for Zimbabwe users');
+      return false;
+    }
+    
+    if (!validateZimbabwePhone(formData.phone)) {
+      setError('Please enter a valid Zimbabwe phone number (e.g., +263771234567 or 0771234567)');
+      return false;
+    }
+    
+    // Validate National ID for citizens
+    if (formData.nationalId && !validateNationalId(formData.nationalId)) {
+      setError('Please enter a valid Zimbabwe National ID (format: 12-345678-A-12)');
+      return false;
+    }
+    
+    // Address validation for property owners and agents
+    if ((formData.role === 'owner' || formData.role === 'agent') && !formData.address.trim()) {
+      setError('Address is required for property owners and agents');
+      return false;
+    }
+    
+    if (formData.password.length < 8) {
+      setError('Password must be at least 8 characters long');
+      return false;
+    }
+    
+    // Password strength validation
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/;
+    if (!passwordRegex.test(formData.password)) {
+      setError('Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character');
       return false;
     }
     
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
+      return false;
+    }
+    
+    if (!formData.acceptTerms) {
+      setError('You must accept the Terms of Service and Privacy Policy');
       return false;
     }
     
@@ -81,10 +160,25 @@ export default function RegisterForm() {
         {
           firstName: formData.firstName,
           lastName: formData.lastName,
+          phone: formatPhoneNumber(formData.phone),
+          nationalId: formData.nationalId,
+          address: formData.address,
+          city: formData.city,
+          country: formData.country,
+          agreeToSMS: formData.agreeToSMS,
+          registrationDate: new Date().toISOString(),
+          verificationStatus: 'pending',
         }
       );
       
-      router.push('/dashboard');
+      // Redirect based on role
+      if (formData.role === 'admin') {
+        router.push('/admin');
+      } else if (formData.role === 'agent') {
+        router.push('/agent');
+      } else {
+        router.push('/dashboard');
+      }
     } catch (error: any) {
       setError(error.message);
     } finally {
@@ -165,17 +259,116 @@ export default function RegisterForm() {
             
             <div className="space-y-2">
               <Label htmlFor="role">Role</Label>
-              <Select value={formData.role} onValueChange={(value) => handleInputChange('role', value)}>
+              <Select value={formData.role} onValueChange={(value: UserRole) => handleInputChange('role', value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select your role" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="owner">Property Owner</SelectItem>
-                  <SelectItem value="agent">Agent</SelectItem>
-                  <SelectItem value="tenant">Tenant</SelectItem>
+                <SelectContent className="z-50">
+                  <SelectItem value="owner">
+                    <div>
+                      <div className="font-medium">Property Owner</div>
+                      <div className="text-xs text-gray-500">Own and manage rental properties</div>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="agent">
+                    <div>
+                      <div className="font-medium">Field Agent</div>
+                      <div className="text-xs text-gray-500">Property inspections and maintenance</div>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="tenant">
+                    <div>
+                      <div className="font-medium">Tenant</div>
+                      <div className="text-xs text-gray-500">Rent and manage your unit</div>
+                    </div>
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Zimbabwe-specific fields */}
+            <div className="space-y-2">
+              <Label htmlFor="phone" className="flex items-center gap-1">
+                <Phone className="w-4 h-4" />
+                Phone Number (Zimbabwe)
+              </Label>
+              <Input
+                id="phone"
+                type="tel"
+                placeholder="+263771234567 or 0771234567"
+                value={formData.phone}
+                onChange={(e) => handleInputChange('phone', e.target.value)}
+                required
+              />
+              <p className="text-xs text-gray-500">
+                Required for SMS notifications and property updates
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="nationalId" className="flex items-center gap-1">
+                <CreditCard className="w-4 h-4" />
+                Zimbabwe National ID (Optional)
+              </Label>
+              <Input
+                id="nationalId"
+                type="text"
+                placeholder="12-345678-A-12"
+                value={formData.nationalId}
+                onChange={(e) => handleInputChange('nationalId', e.target.value)}
+              />
+              <p className="text-xs text-gray-500">
+                For identity verification and faster property transactions
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="city">City</Label>
+                <Select value={formData.city} onValueChange={(value) => handleInputChange('city', value)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-48">
+                    {zimbabweCities.map((city) => (
+                      <SelectItem key={city} value={city}>
+                        {city}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="country">Country</Label>
+                <Input
+                  id="country"
+                  type="text"
+                  value={formData.country}
+                  disabled
+                  className="bg-gray-50"
+                />
+              </div>
+            </div>
+
+            {(formData.role === 'owner' || formData.role === 'agent') && (
+              <div className="space-y-2">
+                <Label htmlFor="address" className="flex items-center gap-1">
+                  <MapPin className="w-4 h-4" />
+                  Physical Address
+                </Label>
+                <Textarea
+                  id="address"
+                  placeholder="Enter your complete physical address in Zimbabwe..."
+                  value={formData.address}
+                  onChange={(e) => handleInputChange('address', e.target.value)}
+                  rows={3}
+                />
+                <p className="text-xs text-gray-500">
+                  Required for property owners and agents for verification purposes
+                </p>
+              </div>
+            )}
             
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
@@ -227,7 +420,91 @@ export default function RegisterForm() {
               </div>
             </div>
             
-            <Button type="submit" className="w-full" disabled={loading}>
+            {/* Terms and SMS Agreement */}
+            <div className="space-y-4">
+              <div className="flex items-start space-x-2">
+                <Checkbox
+                  id="acceptTerms"
+                  checked={formData.acceptTerms}
+                  onCheckedChange={(checked) => handleInputChange('acceptTerms', checked)}
+                  required
+                />
+                <div className="space-y-1">
+                  <Label htmlFor="acceptTerms" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    I accept the Terms of Service and Privacy Policy
+                  </Label>
+                  <p className="text-xs text-gray-500">
+                    By creating an account, you agree to our{' '}
+                    <a href="/terms" className="text-blue-600 hover:underline" target="_blank">
+                      Terms of Service
+                    </a>{' '}
+                    and{' '}
+                    <a href="/privacy" className="text-blue-600 hover:underline" target="_blank">
+                      Privacy Policy
+                    </a>
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start space-x-2">
+                <Checkbox
+                  id="agreeToSMS"
+                  checked={formData.agreeToSMS}
+                  onCheckedChange={(checked) => handleInputChange('agreeToSMS', checked)}
+                />
+                <div className="space-y-1">
+                  <Label htmlFor="agreeToSMS" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    I agree to receive SMS notifications (Optional)
+                  </Label>
+                  <p className="text-xs text-gray-500">
+                    Receive important updates about your properties, maintenance requests, and payments via SMS
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Password Strength Indicator */}
+            {formData.password && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Info className="w-4 h-4 text-blue-500" />
+                  <span className="text-sm font-medium">Password Requirements</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className={`flex items-center gap-1 ${
+                    formData.password.length >= 8 ? 'text-green-600' : 'text-gray-400'
+                  }`}>
+                    {formData.password.length >= 8 ? '✓' : '○'} 8+ characters
+                  </div>
+                  <div className={`flex items-center gap-1 ${
+                    /[A-Z]/.test(formData.password) ? 'text-green-600' : 'text-gray-400'
+                  }`}>
+                    {/[A-Z]/.test(formData.password) ? '✓' : '○'} Uppercase letter
+                  </div>
+                  <div className={`flex items-center gap-1 ${
+                    /[a-z]/.test(formData.password) ? 'text-green-600' : 'text-gray-400'
+                  }`}>
+                    {/[a-z]/.test(formData.password) ? '✓' : '○'} Lowercase letter
+                  </div>
+                  <div className={`flex items-center gap-1 ${
+                    /\d/.test(formData.password) ? 'text-green-600' : 'text-gray-400'
+                  }`}>
+                    {/\d/.test(formData.password) ? '✓' : '○'} Number
+                  </div>
+                  <div className={`flex items-center gap-1 ${
+                    /[@$!%*?&]/.test(formData.password) ? 'text-green-600' : 'text-gray-400'
+                  }`}>
+                    {/[@$!%*?&]/.test(formData.password) ? '✓' : '○'} Special character
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <Button 
+              type="submit" 
+              className="w-full" 
+              disabled={loading || !formData.acceptTerms}
+            >
               {loading ? 'Creating Account...' : 'Create Account'}
             </Button>
           </form>

@@ -245,7 +245,7 @@ export default function LeaseList({ onLeaseSelect }: LeaseListProps) {
                     <FileText className="h-5 w-5 text-muted-foreground" />
                     <div>
                       <h3 className="font-medium">Lease Agreement</h3>
-                      <p className="text-sm text-muted-foreground">ID: {lease.id.slice(0, 8)}...</p>
+                      <p className="text-sm text-muted-foreground">ID: {lease.id ? lease.id.slice(0, 8) + '...' : 'N/A'}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -291,23 +291,23 @@ export default function LeaseList({ onLeaseSelect }: LeaseListProps) {
                 <div className="space-y-3">
                   <div className="flex items-center text-sm text-muted-foreground">
                     <Users className="w-4 h-4 mr-2 flex-shrink-0" />
-                    <span>Tenant: {lease.tenantId.slice(0, 8)}...</span>
+                    <span>Tenant: {lease.tenantId ? lease.tenantId.slice(0, 8) + '...' : 'N/A'}</span>
                   </div>
                   
                   <div className="flex items-center text-sm text-muted-foreground">
                     <Home className="w-4 h-4 mr-2 flex-shrink-0" />
-                    <span>Unit: {lease.unitId.slice(0, 8)}...</span>
+                    <span>Unit: {lease.unitId ? lease.unitId.slice(0, 8) + '...' : 'N/A'}</span>
                   </div>
                   
                   <div className="flex items-center text-sm text-muted-foreground">
                     <DollarSign className="w-4 h-4 mr-2 flex-shrink-0" />
-                    <span>{lease.terms.currency} {lease.terms.rentAmount.toLocaleString()}/{lease.terms.paymentFrequency}</span>
+                    <span>{lease.terms?.currency || 'USD'} {(lease.terms?.rentAmount || 0).toLocaleString()}/{lease.terms?.paymentFrequency || 'monthly'}</span>
                   </div>
                   
                   <div className="flex items-center text-sm text-muted-foreground">
                     <Calendar className="w-4 h-4 mr-2 flex-shrink-0" />
                     <span>
-                      {format(lease.dates.startDate.toDate(), 'MMM dd, yyyy')} - {format(lease.dates.endDate.toDate(), 'MMM dd, yyyy')}
+                      {lease.dates?.startDate ? format(lease.dates.startDate.toDate(), 'MMM dd, yyyy') : 'N/A'} - {lease.dates?.endDate ? format(lease.dates.endDate.toDate(), 'MMM dd, yyyy') : 'N/A'}
                     </span>
                   </div>
                   

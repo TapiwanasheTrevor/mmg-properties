@@ -174,7 +174,7 @@ export function PropertyManagement({ onPropertySelect }: PropertyManagementProps
                     <DollarSign className="w-4 h-4 mr-1" />
                     Monthly Income
                   </div>
-                  <span className="font-semibold text-green-600">${property.monthlyIncome.toLocaleString()}</span>
+                  <span className="font-semibold text-green-600">${(property.monthlyIncome || 0).toLocaleString()}</span>
                 </div>
 
                 <div className="flex space-x-2">

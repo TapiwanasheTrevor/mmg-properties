@@ -86,8 +86,8 @@ export default function ProtectedRoute({
       }
 
       // Check route-specific access
-      const canAccess = await canAccessRoute(pathname);
-      if (!canAccess) {
+      const routeAccess = canAccessRoute(pathname, user.role, requiredPermissions);
+      if (!routeAccess) {
         router.push('/unauthorized');
         return;
       }

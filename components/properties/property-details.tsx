@@ -274,7 +274,7 @@ export default function PropertyDetails({ onBack }: PropertyDetailsProps) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Monthly Income</p>
-                <p className="text-2xl font-bold text-green-600">${property.monthlyIncome.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-green-600">${(property.monthlyIncome || 0).toLocaleString()}</p>
               </div>
               <DollarSign className="w-8 h-8 text-green-600" />
             </div>
@@ -683,7 +683,7 @@ export default function PropertyDetails({ onBack }: PropertyDetailsProps) {
               <CardContent className="space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Rent Collection</span>
-                  <span className="font-semibold">${property.monthlyIncome.toLocaleString()}</span>
+                  <span className="font-semibold">${(property.monthlyIncome || 0).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Late Fees</span>
