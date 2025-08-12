@@ -7,6 +7,9 @@ export const metadata: Metadata = {
   description: 'Manage property schedules, maintenance appointments, inspections, and tenant meetings',
 };
 
+// Force dynamic rendering to prevent Firebase access during static generation
+export const dynamic = 'force-dynamic';
+
 export default function SchedulePage() {
   return (
     <AppLayout 
