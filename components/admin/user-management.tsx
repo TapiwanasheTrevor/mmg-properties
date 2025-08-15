@@ -111,10 +111,10 @@ export default function UserManagement({ className }: UserManagementProps) {
   // Filter users based on search and filters
   const filteredUsers = users.filter(user => {
     const matchesSearch = 
-      user.profile.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.profile.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.profile?.firstName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.profile?.lastName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.profile.phone?.includes(searchQuery);
+      user.profile?.phone?.includes(searchQuery);
 
     const matchesRole = roleFilter === 'all' || user.role === roleFilter;
     const matchesStatus = statusFilter === 'all' || 
@@ -491,16 +491,16 @@ export default function UserManagement({ className }: UserManagementProps) {
               <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg hover:shadow-md transition-shadow">
                 <div className="flex items-center gap-4">
                   <Avatar className="h-12 w-12">
-                    <AvatarImage src={user.profile.avatar} />
+                    <AvatarImage src={user.profile?.avatar} />
                     <AvatarFallback className="bg-blue-100 text-blue-600">
-                      {user.profile.firstName.charAt(0)}{user.profile.lastName.charAt(0)}
+                      {user.profile?.firstName?.charAt(0) || user.email?.charAt(0)?.toUpperCase()}{user.profile?.lastName?.charAt(0) || ''}
                     </AvatarFallback>
                   </Avatar>
                   
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <h4 className="font-semibold">
-                        {user.profile.firstName} {user.profile.lastName}
+                        {user.profile?.firstName || 'No name'} {user.profile?.lastName || ''}
                       </h4>
                       <Badge className={getRoleBadgeColor(user.role)}>
                         {user.role}
@@ -518,10 +518,10 @@ export default function UserManagement({ className }: UserManagementProps) {
                         <Mail className="w-3 h-3" />
                         {user.email}
                       </span>
-                      {user.profile.phone && (
+                      {user.profile?.phone && (
                         <span className="flex items-center gap-1">
                           <Phone className="w-3 h-3" />
-                          {user.profile.phone}
+                          {user.profile?.phone}
                         </span>
                       )}
                       <span className="flex items-center gap-1">
@@ -584,12 +584,12 @@ export default function UserManagement({ className }: UserManagementProps) {
                       setSelectedUser(user);
                       form.reset({
                         email: user.email,
-                        firstName: user.profile.firstName,
-                        lastName: user.profile.lastName,
-                        phone: user.profile.phone || '',
+                        firstName: user.profile?.firstName || '',
+                        lastName: user.profile?.lastName || '',
+                        phone: user.profile?.phone || '',
                         role: user.role as any,
-                        nationalId: user.profile.nationalId || '',
-                        address: user.profile.address || '',
+                        nationalId: user.profile?.nationalId || '',
+                        address: user.profile?.address || '',
                       });
                       setIsEditUserOpen(true);
                     }}

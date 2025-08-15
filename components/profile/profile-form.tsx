@@ -27,8 +27,8 @@ export default function ProfileForm() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
-    firstName: user?.profile.firstName || '',
-    lastName: user?.profile.lastName || '',
+    firstName: user?.profile?.firstName || '',
+    lastName: user?.profile?.lastName || '',
     email: user?.email || '',
     phone: user?.phone || '',
     bio: '',
@@ -67,7 +67,7 @@ export default function ProfileForm() {
     setSuccess('');
 
     try {
-      let avatarUrl = user.profile.avatar;
+      let avatarUrl = user.profile?.avatar;
 
       // Upload new avatar if selected
       if (avatarFile) {
@@ -177,12 +177,12 @@ export default function ProfileForm() {
               <div className="relative">
                 <Avatar className="h-24 w-24">
                   <AvatarImage 
-                    src={avatarPreview || user.profile.avatar} 
+                    src={avatarPreview || user.profile?.avatar} 
                     alt="Profile picture" 
                   />
                   <AvatarFallback className="text-xl">
-                    {user.profile.firstName.charAt(0)}
-                    {user.profile.lastName.charAt(0)}
+                    {user.profile?.firstName?.charAt(0) || user.email?.charAt(0)?.toUpperCase()}
+                    {user.profile?.lastName?.charAt(0) || ''}
                   </AvatarFallback>
                 </Avatar>
                 <Button
@@ -204,7 +204,7 @@ export default function ProfileForm() {
               
               <div>
                 <h3 className="text-lg font-medium">
-                  {user.profile.firstName} {user.profile.lastName}
+                  {user.profile?.firstName || 'No name'} {user.profile?.lastName || ''}
                 </h3>
                 <p className="text-gray-600">{user.email}</p>
                 <Badge className={`mt-2 ${getRoleColor(user.role)}`}>

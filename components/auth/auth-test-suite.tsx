@@ -148,7 +148,7 @@ export default function AuthTestSuite() {
         <CardContent>
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
-              <strong>User:</strong> {user.profile.firstName} {user.profile.lastName}
+              <strong>User:</strong> {user.profile?.firstName || 'No name'} {user.profile?.lastName || ''}
             </div>
             <div>
               <strong>Role:</strong> <Badge>{user.role}</Badge>

@@ -302,7 +302,25 @@ export const getCurrentUserData = async (): Promise<AppUser | null> => {
   const userDoc = await getDoc(doc(db, 'users', user.uid));
   if (!userDoc.exists()) return null;
   
-  return userDoc.data() as AppUser;
+  const userData = userDoc.data() as AppUser;
+  
+  // Auto-fix missing permissions based on role
+  if (!userData.permissions || !Array.isArray(userData.permissions)) {
+    const defaultPermissions = getDefaultPermissions(userData.role);
+    userData.permissions = defaultPermissions;
+    
+    // Update the user document with default permissions
+    try {
+      await updateDoc(doc(db, 'users', user.uid), {
+        permissions: defaultPermissions,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (error) {
+      console.warn('Failed to update user permissions:', error);
+    }
+  }
+  
+  return userData;
 };
 
 // Update user profile
@@ -325,6 +343,9 @@ export const hasPermission = async (permission: string, userId?: string): Promis
   checkFirebaseConfig();
   const user = userId ? await getCurrentUserData() : await getCurrentUserData();
   if (!user) return false;
+  if (!user.permissions || !Array.isArray(user.permissions)) {
+    return false;
+  }
   return user.permissions.includes(permission);
 };
 
@@ -332,6 +353,9 @@ export const hasAllPermissions = async (permissions: string[], userId?: string):
   checkFirebaseConfig();
   const user = userId ? await getCurrentUserData() : await getCurrentUserData();
   if (!user) return false;
+  if (!user.permissions || !Array.isArray(user.permissions)) {
+    return false;
+  }
   return permissions.every(permission => user.permissions.includes(permission));
 };
 

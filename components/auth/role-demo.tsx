@@ -52,7 +52,7 @@ export default function RoleDemo() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <strong>Name:</strong> {user.profile.firstName} {user.profile.lastName}
+            <strong>Name:</strong> {user.profile?.firstName || 'No name'} {user.profile?.lastName || ''}
           </div>
           <div>
             <strong>Email:</strong> {user.email}

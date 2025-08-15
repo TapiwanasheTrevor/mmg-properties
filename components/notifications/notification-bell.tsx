@@ -158,7 +158,12 @@ export default function NotificationBell() {
           {notifications.length > 0 && (
             <>
               <Separator />
-              <Button variant="ghost" size="sm" className="w-full">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="w-full"
+                onClick={() => window.location.href = '/notifications'}
+              >
                 View all notifications
               </Button>
             </>

@@ -217,15 +217,15 @@ export default function MobileNav() {
                 {/* User Profile */}
                 <div className="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg mb-6">
                   <Avatar className="h-12 w-12">
-                    <AvatarImage src={user.profile.avatar} />
+                    <AvatarImage src={user.profile?.avatar} />
                     <AvatarFallback className="bg-blue-600 text-white">
-                      {user.profile.firstName.charAt(0)}
-                      {user.profile.lastName.charAt(0)}
+                      {user.profile?.firstName?.charAt(0) || user.email?.charAt(0)?.toUpperCase()}
+                      {user.profile?.lastName?.charAt(0) || ''}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
                     <p className="font-semibold text-gray-900">
-                      {user.profile.firstName} {user.profile.lastName}
+                      {user.profile?.firstName || 'No name'} {user.profile?.lastName || ''}
                     </p>
                     <Badge variant="secondary" className={`text-xs ${getRoleColor(user.role)}`}>
                       {user.role.charAt(0).toUpperCase() + user.role.slice(1)}

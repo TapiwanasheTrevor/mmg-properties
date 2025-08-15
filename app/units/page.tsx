@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/hooks/useAuth';
 import AppLayout from '@/components/layout/app-layout';
-import UnitsManagement from '@/components/units/units-management';
+import UnitsList from '@/components/units/units-list';
 
 export default function UnitsPage() {
   const { user, loading } = useAuth();
@@ -40,7 +40,7 @@ export default function UnitsPage() {
       title="Units Management" 
       requiredRoles={['admin', 'owner', 'agent']}
     >
-      <UnitsManagement />
+      <UnitsList />
     </AppLayout>
   );
 }

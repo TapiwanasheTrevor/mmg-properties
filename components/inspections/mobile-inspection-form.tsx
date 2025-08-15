@@ -230,7 +230,7 @@ export default function MobileInspectionForm({
       const inspectionData = {
         ...data,
         agentId: user.id,
-        agentName: `${user.profile.firstName} ${user.profile.lastName}`,
+        agentName: `${user.profile?.firstName || 'Unknown'} ${user.profile?.lastName || ''}`,
         location: currentLocation,
         createdAt: new Date(),
         updatedAt: new Date(),

@@ -3,19 +3,21 @@ import {
   doc,
   addDoc,
   updateDoc,
+  deleteDoc,
   query,
   where,
   getDocs,
   orderBy,
   Timestamp,
   serverTimestamp,
+  writeBatch,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { getExpiringLeases, getExpiredLeases } from './leases';
 
 export interface Notification {
   id: string;
-  type: 'lease_expiring' | 'lease_expired' | 'payment_due' | 'maintenance_request';
+  type: 'lease_expiring' | 'lease_expired' | 'payment_due' | 'maintenance_request' | 'system';
   title: string;
   message: string;
   recipients: string[]; // user IDs
@@ -77,6 +79,51 @@ export const markNotificationAsRead = async (notificationId: string): Promise<vo
     await updateDoc(docRef, { read: true });
   } catch (error) {
     console.error('Error marking notification as read:', error);
+    throw error;
+  }
+};
+
+// Mark notification as unread
+export const markNotificationAsUnread = async (notificationId: string): Promise<void> => {
+  try {
+    const docRef = doc(db, 'notifications', notificationId);
+    await updateDoc(docRef, { read: false });
+  } catch (error) {
+    console.error('Error marking notification as unread:', error);
+    throw error;
+  }
+};
+
+// Delete a notification
+export const deleteNotification = async (notificationId: string): Promise<void> => {
+  try {
+    const docRef = doc(db, 'notifications', notificationId);
+    await deleteDoc(docRef);
+  } catch (error) {
+    console.error('Error deleting notification:', error);
+    throw error;
+  }
+};
+
+// Mark all notifications as read for a user
+export const markAllNotificationsAsRead = async (userId: string): Promise<void> => {
+  try {
+    const q = query(
+      notificationsCollection,
+      where('recipients', 'array-contains', userId),
+      where('read', '==', false)
+    );
+    
+    const querySnapshot = await getDocs(q);
+    const batch = writeBatch(db);
+    
+    querySnapshot.forEach((docSnapshot) => {
+      batch.update(docSnapshot.ref, { read: true });
+    });
+    
+    await batch.commit();
+  } catch (error) {
+    console.error('Error marking all notifications as read:', error);
     throw error;
   }
 };
@@ -278,6 +325,65 @@ export const cleanupOldNotifications = async (): Promise<void> => {
     console.log(`Found ${querySnapshot.docs.length} old notifications to clean up`);
   } catch (error) {
     console.error('Error cleaning up old notifications:', error);
+    throw error;
+  }
+};
+
+// Create demo notifications for testing (should be removed in production)
+export const createDemoNotifications = async (userId: string): Promise<void> => {
+  try {
+    // Check if demo notifications already exist
+    const existingNotifications = await getUserNotifications(userId);
+    if (existingNotifications.length > 0) {
+      console.log('Demo notifications already exist for user');
+      return;
+    }
+
+    const demoNotifications = [
+      {
+        type: 'payment_due' as const,
+        title: 'Rent Payment Due',
+        message: 'Your rent payment of $1,200 is due in 3 days.',
+        recipients: [userId],
+        priority: 'high' as const,
+      },
+      {
+        type: 'maintenance_request' as const,
+        title: 'Maintenance Request Update',
+        message: 'Your air conditioning repair request has been assigned to a technician.',
+        recipients: [userId],
+        priority: 'medium' as const,
+      },
+      {
+        type: 'lease_expiring' as const,
+        title: 'Lease Renewal Notice',
+        message: 'Your lease is expiring in 30 days. Please contact us to discuss renewal options.',
+        recipients: [userId],
+        priority: 'medium' as const,
+      },
+      {
+        type: 'system' as const,
+        title: 'Welcome to MMG Properties',
+        message: 'Welcome to the MMG Properties platform! Here you can manage your tenancy, submit maintenance requests, and much more.',
+        recipients: [userId],
+        priority: 'low' as const,
+      },
+      {
+        type: 'maintenance_request' as const,
+        title: 'Emergency Repair Completed',
+        message: 'The emergency plumbing repair in your unit has been completed. Please test the fixtures and report any issues.',
+        recipients: [userId],
+        priority: 'high' as const,
+      }
+    ];
+
+    for (const notification of demoNotifications) {
+      await createNotification(notification);
+    }
+
+    console.log(`Created ${demoNotifications.length} demo notifications for user ${userId}`);
+  } catch (error) {
+    console.error('Error creating demo notifications:', error);
     throw error;
   }
 };

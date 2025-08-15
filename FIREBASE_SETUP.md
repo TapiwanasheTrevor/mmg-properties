@@ -1,232 +1,154 @@
-# Firebase Setup Guide for MMG Platform
+# 🔥 Firebase Setup Guide for MMG Properties Platform
 
-This guide will help you set up Firebase Authentication and Firestore database for the MMG Platform.
+## Quick Fix for Authentication Error
 
-## Prerequisites
+The `auth/invalid-credential` error occurs because the Firebase project isn't fully configured yet. Here's how to fix it:
 
-- A Google account
-- Node.js installed on your system
-- Firebase CLI installed globally: `npm install -g firebase-tools`
-
-## Step 1: Create a Firebase Project
-
-1. Go to the [Firebase Console](https://console.firebase.google.com/)
-2. Click "Create a project"
-3. Enter project name: `mmg-platform` (or your preferred name)
-4. Choose whether to enable Google Analytics (recommended)
-5. Click "Create project"
-
-## Step 2: Enable Authentication
-
-1. In the Firebase Console, go to **Authentication** > **Sign-in method**
-2. Enable the following sign-in providers:
-   - **Email/Password**: Enable this provider
-   - **Google**: Enable and configure OAuth consent screen
-   - **Phone**: Enable for SMS verification (optional)
-
-3. Go to **Authentication** > **Settings** > **Authorized domains**
-4. Add your domains:
-   - `localhost` (for development)
-   - Your production domain
-
-## Step 3: Create Firestore Database
-
-1. Go to **Firestore Database** in the Firebase Console
-2. Click "Create database"
-3. Choose **Start in test mode** (we'll add security rules later)
-4. Select a location (choose one close to your users)
-5. Click "Done"
-
-## Step 4: Set up Firebase Storage
-
-1. Go to **Storage** in the Firebase Console
-2. Click "Get started"
-3. Choose **Start in test mode**
-4. Select the same location as your Firestore database
-5. Click "Done"
-
-## Step 5: Get Firebase Configuration
-
-1. Go to **Project Overview** > **Project settings**
-2. Scroll down to "Your apps" section
-3. Click the web icon `</>` to add a web app
-4. Register your app with name "MMG Platform Web"
-5. Copy the Firebase configuration object
-
-## Step 6: Configure Environment Variables
-
-1. Create a `.env.local` file in your project root:
+### Option 1: Use Firebase Emulator (Recommended for Development)
 
 ```bash
-cp .env.local.example .env.local
-```
-
-2. Update `.env.local` with your Firebase configuration:
-
-```env
-# Firebase Configuration
-NEXT_PUBLIC_FIREBASE_API_KEY=your-api-key-here
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-project-id.firebaseapp.com
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-project-id
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your-project-id.appspot.com
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=123456789
-NEXT_PUBLIC_FIREBASE_APP_ID=1:123456789:web:abc123def456
-```
-
-## Step 7: Deploy Security Rules
-
-1. Install Firebase CLI and login:
-```bash
+# Install Firebase CLI globally
 npm install -g firebase-tools
+
+# Login to Firebase
 firebase login
-```
 
-2. Initialize Firebase in your project:
-```bash
+# Initialize Firebase project
 firebase init
-```
-Select:
-- Firestore: Configure security rules and indexes
-- Storage: Configure security rules
-- Choose your Firebase project
 
-3. Replace the generated rules with our custom rules:
-   - Copy `firestore.rules` to `firestore.rules`
-   - Copy `storage.rules` to `storage.rules`
+# Start emulators
+npm run emulator:start
 
-4. Deploy the rules:
-```bash
-firebase deploy --only firestore:rules,storage
+# In another terminal, set emulator mode and start dev server
+USE_FIREBASE_EMULATOR=true npm run dev
 ```
 
-## Step 8: Set up Firestore Indexes (Optional)
+### Option 2: Create Production Firebase Project
 
-For better query performance, you may need to create indexes. The Firebase Console will show you which indexes to create when you run queries.
+1. **Go to Firebase Console:** https://console.firebase.google.com
+2. **Create new project:** `mmg-properties-africa`
+3. **Enable Authentication:**
+   - Go to Authentication > Sign-in method
+   - Enable "Email/Password"
+4. **Enable Firestore Database:**
+   - Go to Firestore Database
+   - Create database in production mode
+5. **Get your config:**
+   - Go to Project Settings > General
+   - Add web app
+   - Copy the Firebase config
 
-Common indexes needed:
-- `users` collection: `role`, `isActive`, `createdAt`
-- `properties` collection: `ownerId`, `agentId`, `status`, `createdAt`
-- `maintenance_requests` collection: `status`, `priority`, `tenantId`, `propertyId`, `createdAt`
+### Option 3: Quick Setup Script (Easiest)
 
-## Step 9: Set up Firebase Functions (Optional)
-
-If you want to use Firebase Functions for backend logic:
-
-1. Initialize Functions:
 ```bash
-firebase init functions
+# Run the Firebase setup script
+npm run setup:firebase
+
+# This will:
+# 1. Test Firebase connection
+# 2. Create all test users
+# 3. Verify credentials work
 ```
 
-2. Choose TypeScript/JavaScript
-3. Install dependencies when prompted
+## Current Configuration Issue
 
-## Step 10: Test the Setup
+Your current Firebase config is using a placeholder API key:
+```
+AIzaSyD-w4tP94wfkorfa0vgKFd4kVYU-qDqe48
+```
 
-1. Start your development server:
+This needs to be replaced with your actual Firebase project credentials.
+
+## Environment Variables Setup
+
+Create `.env.local` file with your actual Firebase credentials:
+
 ```bash
+# Firebase Configuration
+NEXT_PUBLIC_FIREBASE_API_KEY=your_actual_api_key_here
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=mmg-properties-africa.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=mmg-properties-africa
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=mmg-properties-africa.appspot.com
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
+
+# For development with emulator
+USE_FIREBASE_EMULATOR=true
+```
+
+## Test User Credentials
+
+Once Firebase is properly configured, you can login with:
+
+### Admin
+- **Email:** admin@mmgproperties.africa
+- **Password:** Admin@MMG2024!
+
+### Owner  
+- **Email:** owner@example.com
+- **Password:** Owner@123456
+
+### Agent
+- **Email:** agent@mmgproperties.africa  
+- **Password:** Agent@123456
+
+### Tenant
+- **Email:** tenant@example.com
+- **Password:** Tenant@123456
+
+## Troubleshooting Common Issues
+
+### 1. `auth/invalid-credential`
+- Firebase project doesn't exist
+- Wrong API key in environment variables
+- Authentication not enabled in Firebase Console
+
+### 2. `auth/network-request-failed`
+- Internet connection issue
+- Firebase servers unreachable
+- Firewall blocking Firebase
+
+### 3. `auth/project-not-found`
+- Project ID doesn't match actual Firebase project
+- Typo in project configuration
+
+### 4. `auth/api-key-not-valid`
+- API key is wrong or disabled
+- API key restrictions preventing access
+
+## Development vs Production
+
+### Development (Recommended)
+```bash
+# Use Firebase emulator
+USE_FIREBASE_EMULATOR=true npm run dev
+```
+
+### Production
+```bash
+# Use real Firebase project
 npm run dev
 ```
 
-2. Go to `http://localhost:3000`
-3. Try to register a new user
-4. Check the Firebase Console to see if the user was created
+## Firebase Console URLs
 
-## Firebase Emulators (Development)
+- **Project Overview:** https://console.firebase.google.com/project/mmg-properties-africa
+- **Authentication:** https://console.firebase.google.com/project/mmg-properties-africa/authentication/users
+- **Firestore:** https://console.firebase.google.com/project/mmg-properties-africa/firestore/data
 
-For local development, you can use Firebase emulators:
+## Next Steps
 
-1. Install emulators:
-```bash
-firebase init emulators
-```
-Select: Authentication, Firestore, Storage
+1. Choose Option 1, 2, or 3 above
+2. Update your `.env.local` with correct credentials
+3. Run `npm run setup:firebase` to create test users
+4. Start development server: `npm run dev`
+5. Login with test credentials
 
-2. Start emulators:
-```bash
-firebase emulators:start
-```
+## Need Help?
 
-3. The app will automatically connect to emulators in development mode.
+If you continue having issues:
 
-## User Roles and Permissions
-
-The platform supports 4 user roles:
-
-### Admin
-- Full access to all features
-- Can manage users, properties, leases, maintenance
-- Can view all reports and analytics
-
-### Owner
-- Can manage their properties and units
-- Can view leases and tenants for their properties
-- Can approve maintenance requests
-- Can view financial reports for their properties
-
-### Agent
-- Can manage assigned properties
-- Can create and manage leases
-- Can handle maintenance requests
-- Limited financial access
-
-### Tenant
-- Can view their lease information
-- Can submit maintenance requests
-- Can view payment history
-- Limited read-only access
-
-## Security Features
-
-- Multi-factor authentication (MFA) support
-- Role-based access control (RBAC)
-- Comprehensive Firestore security rules
-- File upload restrictions and validation
-- Audit logging for sensitive operations
-
-## Troubleshooting
-
-### Common Issues:
-
-1. **"Firebase is not properly configured"**
-   - Check your `.env.local` file
-   - Ensure all environment variables are set correctly
-
-2. **Permission denied errors**
-   - Check Firestore security rules
-   - Ensure user has the correct role assigned
-
-3. **Authentication not working**
-   - Check if authentication providers are enabled
-   - Verify authorized domains include your current domain
-
-4. **File uploads failing**
-   - Check Storage security rules
-   - Verify file size and type restrictions
-
-### Getting Help:
-
-- Check the browser console for detailed error messages
-- Review Firebase Console logs
-- Check the `isFirebaseConfigured()` function output
-- Ensure your Firebase project has billing enabled for production use
-
-## Production Deployment
-
-Before deploying to production:
-
-1. **Update security rules** to be more restrictive
-2. **Enable billing** on your Firebase project
-3. **Set up monitoring** and alerts
-4. **Configure backup** for Firestore
-5. **Set up proper error logging**
-6. **Review and test all security rules**
-
-## Cost Optimization
-
-- Use Firestore queries efficiently
-- Implement proper pagination
-- Use Firebase Storage compression
-- Monitor usage in Firebase Console
-- Set up billing alerts
-
-This setup provides a robust, scalable backend for your property management platform with proper security and authentication.
+1. Check Firebase Console for your project status
+2. Verify all services (Auth, Firestore) are enabled
+3. Double-check your API keys match the console
+4. Try using the emulator for development first

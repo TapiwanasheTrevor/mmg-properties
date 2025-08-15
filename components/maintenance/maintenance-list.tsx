@@ -36,7 +36,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { format, formatDistanceToNow } from 'date-fns';
-// import { getMaintenanceRequests, deleteMaintenanceRequest, assignMaintenanceRequest, updateMaintenanceRequestStatus } from '@/lib/services/maintenance';
+import { getMaintenanceRequests, deleteMaintenanceRequest, assignMaintenanceRequest, updateMaintenanceRequestStatus } from '@/lib/services/maintenance';
 
 // Types
 type RequestStatus = 'pending' | 'submitted' | 'assigned' | 'in_progress' | 'awaiting_approval' | 'completed' | 'cancelled';
@@ -122,58 +122,9 @@ export default function MaintenanceList({
         filters.assignedTo = user.id;
       }
 
-      // Mock data instead of Firebase call
-      const mockRequests = [
-        {
-          id: '1',
-          title: 'Leaking faucet in kitchen',
-          description: 'The kitchen faucet has been leaking for the past week',
-          category: 'plumbing' as RequestCategory,
-          priority: 'high' as RequestPriority,
-          status: 'submitted' as RequestStatus,
-          propertyId: 'prop1',
-          unitId: 'unit1',
-          tenantId: 'tenant1',
-          createdAt: { toDate: () => new Date('2024-01-15') },
-          tenant: {
-            name: 'John Smith',
-            email: 'john@email.com',
-            phone: '+263 77 123 4567'
-          },
-          property: {
-            name: 'Sunset Apartments',
-            address: '123 Main St'
-          },
-          unit: {
-            number: 'A101'
-          }
-        },
-        {
-          id: '2',
-          title: 'Broken air conditioning',
-          description: 'AC unit not working, needs repair or replacement',
-          category: 'hvac' as RequestCategory,
-          priority: 'medium' as RequestPriority,
-          status: 'in_progress' as RequestStatus,
-          propertyId: 'prop2',
-          unitId: 'unit2',
-          tenantId: 'tenant2',
-          createdAt: { toDate: () => new Date('2024-01-10') },
-          tenant: {
-            name: 'Jane Doe',
-            email: 'jane@email.com',
-            phone: '+263 77 987 6543'
-          },
-          property: {
-            name: 'Downtown Lofts',
-            address: '456 Oak Ave'
-          },
-          unit: {
-            number: 'B202'
-          }
-        }
-      ];
-      setRequests(mockRequests);
+      // Load real data from Firebase
+      const result = await getMaintenanceRequests(filters);
+      setRequests(result.requests);
     } catch (error: any) {
       setError(error.message);
     } finally {
@@ -187,7 +138,8 @@ export default function MaintenanceList({
     }
 
     try {
-      // Mock delete - just remove from state
+      await deleteMaintenanceRequest(requestId);
+      // Remove from local state
       setRequests(prev => prev.filter(r => r.id !== requestId));
     } catch (error: any) {
       setError(error.message);
@@ -196,7 +148,8 @@ export default function MaintenanceList({
 
   const handleStatusUpdate = async (requestId: string, status: RequestStatus) => {
     try {
-      // Mock status update - just update state
+      await updateMaintenanceRequestStatus(requestId, status);
+      // Update local state
       setRequests(prev => 
         prev.map(r => r.id === requestId ? { ...r, status } : r)
       );
