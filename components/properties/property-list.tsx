@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Property, PropertyType, PropertyStatus } from '@/lib/types';
 import { getProperties, deleteProperty, searchProperties } from '@/lib/services/properties';
+import { ConfirmationDialog, useDeleteConfirmation } from '@/components/ui/confirmation-dialog';
 
 interface PropertyListProps {
   onPropertySelect?: (propertyId: string) => void;
@@ -45,6 +46,7 @@ export default function PropertyList({ onPropertySelect }: PropertyListProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<PropertyType | 'all'>('all');
   const [statusFilter, setStatusFilter] = useState<PropertyStatus | 'all'>('all');
+  const deleteConfirmation = useDeleteConfirmation();
 
   useEffect(() => {
     loadProperties();
@@ -102,17 +104,19 @@ export default function PropertyList({ onPropertySelect }: PropertyListProps) {
     }
   };
 
-  const handleDeleteProperty = async (propertyId: string) => {
-    if (!confirm('Are you sure you want to delete this property? This action cannot be undone.')) {
-      return;
-    }
-
-    try {
-      await deleteProperty(propertyId);
-      setProperties(prev => prev.filter(p => p.id !== propertyId));
-    } catch (error: any) {
-      setError(error.message);
-    }
+  const handleDeleteProperty = async (property: Property) => {
+    deleteConfirmation.confirmDelete(
+      property,
+      async () => {
+        try {
+          await deleteProperty(property.id);
+          setProperties(prev => prev.filter(p => p.id !== property.id));
+        } catch (error: any) {
+          setError(error.message);
+          throw error;
+        }
+      }
+    );
   };
 
   const getStatusColor = (status: PropertyStatus) => {
@@ -322,7 +326,7 @@ export default function PropertyList({ onPropertySelect }: PropertyListProps) {
                               </Link>
                             </DropdownMenuItem>
                             <DropdownMenuItem 
-                              onClick={() => handleDeleteProperty(property.id)}
+                              onClick={() => handleDeleteProperty(property)}
                               className="text-red-600"
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
@@ -398,6 +402,44 @@ export default function PropertyList({ onPropertySelect }: PropertyListProps) {
           </div>
         </div>
       )}
+
+      <ConfirmationDialog
+        open={deleteConfirmation.isOpen}
+        onOpenChange={deleteConfirmation.setIsOpen}
+        title="Delete Property"
+        description={
+          deleteConfirmation.itemToDelete ? (
+            <div className="space-y-2">
+              <p>Are you sure you want to delete this property?</p>
+              <div className="bg-gray-50 p-3 rounded-md">
+                <p className="text-sm text-gray-600">
+                  <strong>Name:</strong> {deleteConfirmation.itemToDelete.name}
+                </p>
+                <p className="text-sm text-gray-600">
+                  <strong>Address:</strong> {deleteConfirmation.itemToDelete.address}
+                </p>
+                <p className="text-sm text-gray-600">
+                  <strong>Type:</strong> {deleteConfirmation.itemToDelete.type}
+                </p>
+                <p className="text-sm text-gray-600">
+                  <strong>Units:</strong> {deleteConfirmation.itemToDelete.totalUnits || 0}
+                </p>
+              </div>
+              <p className="text-sm text-red-600 font-medium">
+                This action cannot be undone and will affect all associated units and leases.
+              </p>
+            </div>
+          ) : (
+            "Are you sure you want to delete this property? This action cannot be undone."
+          )
+        }
+        confirmText="Delete Property"
+        cancelText="Cancel"
+        onConfirm={deleteConfirmation.handleConfirm}
+        onCancel={deleteConfirmation.handleCancel}
+        type="danger"
+        isLoading={deleteConfirmation.isLoading}
+      />
     </div>
   );
 }

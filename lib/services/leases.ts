@@ -15,7 +15,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Lease, LeaseStatus, PaymentFrequency, Currency } from '@/lib/types';
-import { assignTenantToUnit, removeTenantFromUnit } from './tenants';
+import { assignTenantToUnit } from './tenants';
 
 // Leases collection reference
 const leasesCollection = collection(db, 'leases');
@@ -108,8 +108,15 @@ export const deleteLease = async (leaseId: string): Promise<void> => {
     if (!lease) throw new Error('Lease not found');
 
     // Remove tenant from unit if lease is active
-    if (lease.status === 'active') {
-      await removeTenantFromUnit(lease.tenantId);
+    if (lease.status === 'active' && lease.unitId) {
+      try {
+        // Update the unit to remove the current tenant
+        const { updateUnitTenant } = await import('./units');
+        await updateUnitTenant(lease.unitId, null, null);
+      } catch (error) {
+        console.warn('Could not remove tenant from unit:', error);
+        // Continue with lease deletion even if unit update fails
+      }
     }
 
     const docRef = doc(db, 'leases', leaseId);

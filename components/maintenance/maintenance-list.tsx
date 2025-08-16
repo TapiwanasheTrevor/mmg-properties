@@ -37,6 +37,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { format, formatDistanceToNow } from 'date-fns';
 import { getMaintenanceRequests, deleteMaintenanceRequest, assignMaintenanceRequest, updateMaintenanceRequestStatus } from '@/lib/services/maintenance';
+import { ConfirmationDialog, useDeleteConfirmation } from '@/components/ui/confirmation-dialog';
 
 // Types
 type RequestStatus = 'pending' | 'submitted' | 'assigned' | 'in_progress' | 'awaiting_approval' | 'completed' | 'cancelled';
@@ -86,6 +87,7 @@ export default function MaintenanceList({
 }: MaintenanceListProps) {
   const { user } = useAuth();
   const [requests, setRequests] = useState<MaintenanceRequest[]>([]);
+  const deleteConfirmation = useDeleteConfirmation();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -132,18 +134,20 @@ export default function MaintenanceList({
     }
   };
 
-  const handleDeleteRequest = async (requestId: string) => {
-    if (!confirm('Are you sure you want to delete this maintenance request? This action cannot be undone.')) {
-      return;
-    }
-
-    try {
-      await deleteMaintenanceRequest(requestId);
-      // Remove from local state
-      setRequests(prev => prev.filter(r => r.id !== requestId));
-    } catch (error: any) {
-      setError(error.message);
-    }
+  const handleDeleteRequest = async (request: MaintenanceRequest) => {
+    deleteConfirmation.confirmDelete(
+      request,
+      async () => {
+        try {
+          await deleteMaintenanceRequest(request.id);
+          // Remove from local state
+          setRequests(prev => prev.filter(r => r.id !== request.id));
+        } catch (error: any) {
+          setError(error.message);
+          throw error;
+        }
+      }
+    );
   };
 
   const handleStatusUpdate = async (requestId: string, status: RequestStatus) => {
@@ -504,7 +508,7 @@ export default function MaintenanceList({
                           
                           {canDeleteRequest(request) && (
                             <DropdownMenuItem 
-                              onClick={() => handleDeleteRequest(request.id)}
+                              onClick={() => handleDeleteRequest(request)}
                               className="text-red-600"
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
@@ -530,6 +534,44 @@ export default function MaintenanceList({
           </div>
         </div>
       )}
+
+      <ConfirmationDialog
+        open={deleteConfirmation.isOpen}
+        onOpenChange={deleteConfirmation.setIsOpen}
+        title="Delete Maintenance Request"
+        description={
+          deleteConfirmation.itemToDelete ? (
+            <div className="space-y-2">
+              <p>Are you sure you want to delete this maintenance request?</p>
+              <div className="bg-gray-50 p-3 rounded-md">
+                <p className="text-sm text-gray-600">
+                  <strong>Title:</strong> {deleteConfirmation.itemToDelete.title}
+                </p>
+                <p className="text-sm text-gray-600">
+                  <strong>Description:</strong> {deleteConfirmation.itemToDelete.description}
+                </p>
+                <p className="text-sm text-gray-600">
+                  <strong>Priority:</strong> {deleteConfirmation.itemToDelete.priority}
+                </p>
+                <p className="text-sm text-gray-600">
+                  <strong>Status:</strong> {deleteConfirmation.itemToDelete.status}
+                </p>
+              </div>
+              <p className="text-sm text-red-600 font-medium">
+                This action cannot be undone.
+              </p>
+            </div>
+          ) : (
+            "Are you sure you want to delete this maintenance request? This action cannot be undone."
+          )
+        }
+        confirmText="Delete Request"
+        cancelText="Cancel"
+        onConfirm={deleteConfirmation.handleConfirm}
+        onCancel={deleteConfirmation.handleCancel}
+        type="danger"
+        isLoading={deleteConfirmation.isLoading}
+      />
     </div>
   );
 }

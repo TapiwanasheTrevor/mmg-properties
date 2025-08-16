@@ -93,17 +93,24 @@ export default function UserManagement({ className }: UserManagementProps) {
 
   // Load users in real-time
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, 'users'), (snapshot) => {
-      const usersData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate() || new Date(),
-        lastSeen: doc.data().lastSeen?.toDate(),
-      })) as User[];
-      
-      setUsers(usersData);
-      setLoading(false);
-    });
+    const unsubscribe = onSnapshot(
+      collection(db, 'users'), 
+      (snapshot) => {
+        const usersData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toDate() || new Date(),
+          lastSeen: doc.data().lastSeen?.toDate(),
+        })) as User[];
+        
+        setUsers(usersData);
+        setLoading(false);
+      },
+      (error) => {
+        console.error('Error fetching users:', error);
+        setLoading(false);
+      }
+    );
 
     return () => unsubscribe();
   }, []);

@@ -33,6 +33,7 @@ import {
 import { format } from 'date-fns';
 import { Lease, LeaseStatus } from '@/lib/types';
 import { getLeases, deleteLease } from '@/lib/services/leases';
+import { ConfirmationDialog, useDeleteConfirmation } from '@/components/ui/confirmation-dialog';
 
 interface LeaseListProps {
   onLeaseSelect?: (leaseId: string) => void;
@@ -45,6 +46,7 @@ export default function LeaseList({ onLeaseSelect }: LeaseListProps) {
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<LeaseStatus | 'all'>('all');
+  const deleteConfirmation = useDeleteConfirmation();
 
   useEffect(() => {
     loadLeases();
@@ -72,17 +74,19 @@ export default function LeaseList({ onLeaseSelect }: LeaseListProps) {
     }
   };
 
-  const handleDeleteLease = async (leaseId: string) => {
-    if (!confirm('Are you sure you want to delete this lease? This action cannot be undone.')) {
-      return;
-    }
-
-    try {
-      await deleteLease(leaseId);
-      setLeases(prev => prev.filter(l => l.id !== leaseId));
-    } catch (error: any) {
-      setError(error.message);
-    }
+  const handleDeleteLease = async (lease: Lease) => {
+    deleteConfirmation.confirmDelete(
+      lease,
+      async () => {
+        try {
+          await deleteLease(lease.id);
+          setLeases(prev => prev.filter(l => l.id !== lease.id));
+        } catch (error: any) {
+          setError(error.message);
+          throw error; // Re-throw to show error in dialog
+        }
+      }
+    );
   };
 
   const filteredLeases = leases.filter(lease => {
@@ -274,7 +278,7 @@ export default function LeaseList({ onLeaseSelect }: LeaseListProps) {
                               </Link>
                             </DropdownMenuItem>
                             <DropdownMenuItem 
-                              onClick={() => handleDeleteLease(lease.id)}
+                              onClick={() => handleDeleteLease(lease)}
                               className="text-red-600"
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
@@ -346,6 +350,41 @@ export default function LeaseList({ onLeaseSelect }: LeaseListProps) {
           </div>
         </div>
       )}
+
+      <ConfirmationDialog
+        open={deleteConfirmation.isOpen}
+        onOpenChange={deleteConfirmation.setIsOpen}
+        title="Delete Lease Agreement"
+        description={
+          deleteConfirmation.itemToDelete ? (
+            <div className="space-y-2">
+              <p>Are you sure you want to delete this lease agreement?</p>
+              <div className="bg-gray-50 p-3 rounded-md">
+                <p className="text-sm text-gray-600">
+                  <strong>Tenant:</strong> {deleteConfirmation.itemToDelete.tenantId}
+                </p>
+                <p className="text-sm text-gray-600">
+                  <strong>Unit:</strong> {deleteConfirmation.itemToDelete.unitId}
+                </p>
+                <p className="text-sm text-gray-600">
+                  <strong>Status:</strong> {deleteConfirmation.itemToDelete.status}
+                </p>
+              </div>
+              <p className="text-sm text-red-600 font-medium">
+                This action cannot be undone.
+              </p>
+            </div>
+          ) : (
+            "Are you sure you want to delete this lease agreement? This action cannot be undone."
+          )
+        }
+        confirmText="Delete Lease"
+        cancelText="Cancel"
+        onConfirm={deleteConfirmation.handleConfirm}
+        onCancel={deleteConfirmation.handleCancel}
+        type="danger"
+        isLoading={deleteConfirmation.isLoading}
+      />
     </div>
   );
 }

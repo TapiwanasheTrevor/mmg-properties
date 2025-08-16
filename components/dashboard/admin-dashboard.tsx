@@ -95,73 +95,104 @@ export default function AdminDashboard({ className }: AdminDashboardProps) {
 
   // Load real-time system metrics
   useEffect(() => {
+    // Only set up listeners if user is admin
+    if (!user || user.role !== 'admin') {
+      setLoading(false);
+      return;
+    }
+
     const unsubscribers: (() => void)[] = [];
 
     // Listen to properties
     unsubscribers.push(
-      onSnapshot(collection(db, 'properties'), (snapshot) => {
-        const properties = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        const totalUnits = properties.reduce((sum, property) => sum + (property.totalUnits || 0), 0);
-        const occupiedUnits = properties.reduce((sum, property) => sum + (property.occupiedUnits || 0), 0);
-        const monthlyRevenue = properties.reduce((sum, property) => sum + (property.monthlyIncome || 0), 0);
-        
-        setSystemMetrics(prev => ({
-          ...prev,
-          totalProperties: properties.length,
-          totalUnits,
-          occupancyRate: totalUnits > 0 ? Math.round((occupiedUnits / totalUnits) * 100) : 0,
-          monthlyRevenue
-        }));
-      })
+      onSnapshot(
+        collection(db, 'properties'), 
+        (snapshot) => {
+          const properties = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          const totalUnits = properties.reduce((sum, property) => sum + (property.totalUnits || 0), 0);
+          const occupiedUnits = properties.reduce((sum, property) => sum + (property.occupiedUnits || 0), 0);
+          const monthlyRevenue = properties.reduce((sum, property) => sum + (property.monthlyIncome || 0), 0);
+          
+          setSystemMetrics(prev => ({
+            ...prev,
+            totalProperties: properties.length,
+            totalUnits,
+            occupancyRate: totalUnits > 0 ? Math.round((occupiedUnits / totalUnits) * 100) : 0,
+            monthlyRevenue
+          }));
+        },
+        (error) => {
+          console.error('Error fetching properties:', error);
+        }
+      )
     );
 
     // Listen to users
     unsubscribers.push(
-      onSnapshot(collection(db, 'users'), (snapshot) => {
-        const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        const activeUsers = users.filter(user => user.isActive).length;
-        const activeAgents = users.filter(user => user.role === 'agent' && user.isActive).length;
-        
-        setSystemMetrics(prev => ({
-          ...prev,
-          activeUsers,
-          activeAgents
-        }));
-      })
+      onSnapshot(
+        collection(db, 'users'), 
+        (snapshot) => {
+          const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          const activeUsers = users.filter(user => user.isActive).length;
+          const activeAgents = users.filter(user => user.role === 'agent' && user.isActive).length;
+          
+          setSystemMetrics(prev => ({
+            ...prev,
+            activeUsers,
+            activeAgents
+          }));
+        },
+        (error) => {
+          console.error('Error fetching users:', error);
+        }
+      )
     );
 
     // Listen to maintenance requests
     unsubscribers.push(
       onSnapshot(
         query(
-          collection(db, 'maintenance_requests'),
-          where('status', 'in', ['submitted', 'assigned', 'in_progress'])
+          collection(db, 'maintenanceRequests'),
+          where('status', 'in', ['pending', 'in_progress', 'scheduled'])
         ),
         (snapshot) => {
           setSystemMetrics(prev => ({
             ...prev,
             pendingRequests: snapshot.size
           }));
+        },
+        (error) => {
+          console.error('Error fetching maintenance requests:', error);
         }
       )
     );
 
-    // Listen to recent activity
+    // Listen to recent maintenance requests as activity
     unsubscribers.push(
       onSnapshot(
         query(
-          collection(db, 'system_activity'),
-          orderBy('timestamp', 'desc'),
-          limit(20)
+          collection(db, 'maintenanceRequests'),
+          orderBy('createdAt', 'desc'),
+          limit(10)
         ),
         (snapshot) => {
-          const activities = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-            timestamp: doc.data().timestamp.toDate()
-          })) as RecentActivity[];
+          const activities = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+              id: doc.id,
+              type: 'maintenance_request' as const,
+              message: `Maintenance request: ${data.title || data.description || 'New request'}`,
+              timestamp: data.createdAt?.toDate() || new Date(),
+              priority: data.priority || 'medium',
+              propertyId: data.propertyId
+            };
+          }) as RecentActivity[];
           
           setRecentActivity(activities);
+        },
+        (error) => {
+          console.error('Error fetching recent maintenance:', error);
+          setRecentActivity([]);
         }
       )
     );
@@ -171,7 +202,7 @@ export default function AdminDashboard({ className }: AdminDashboardProps) {
     return () => {
       unsubscribers.forEach(unsubscribe => unsubscribe());
     };
-  }, []);
+  }, [user]);
 
   // Calculate system health based on metrics
   useEffect(() => {
